@@ -1,0 +1,6 @@
+node_modules/
+.vscode/
+.eslintrc.json
+TODO.txt
+config/channels.json
+config/misc.json

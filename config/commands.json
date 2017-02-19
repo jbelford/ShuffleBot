@@ -1,0 +1,102 @@
+{
+    "help" : {
+        "func" : "help",
+        "detail" : [" ~ Shows the list of all available commands their details."],
+        "obj" : ""
+    },
+    "download" : {
+        "func" : "download",
+        "detail" : [
+          " <user_permalink> ~ Downloads a user's favorites from SoundCloud (Overwrites any previous)\n",
+          "\t<user_permalink> ~ Found in the URL for a soundcloud user: https://soundcloud.com/THIS_VALUE"
+        ],
+        "obj" : ""
+    },
+    "update" : {
+        "func" : "update",
+        "detail" : [
+          " <user_permalink> ~ Updates a user's favorites if they are in the database (Only adds new favorites)\n",
+          "\t<user_permalink> ~ Same as above"
+        ],
+        "obj" : ""
+    },
+    "list" : {
+        "func" : "list",
+        "detail" : [" ~ Shows the list of users whose Soundcloud favorites are in the database"],
+        "obj" : ""
+    },
+    "queue" : {
+        "func" : "editQueue",
+        "detail" : [
+          " {add (<query> | <specific>)} ~ Shows the queue or adds items to the queue if arguments are provided\n",
+          "\t<query> ~ Search terms for a song. Queues the first result from youtube.\n",
+          "\t<specific> = <user_data>+ &| <yt_url> &| <sc_url>\n",
+          "\t\t<user_data> = <user_permalink> <range>\n",
+          "\t\t\t<user_permalink> ~ Same as above\n",
+          "\t\t\t<range> ~ Specifies range of the user's music list to use. Valid syntax is below.\n",
+          "\t\t\t\t[X] ~ Means select the first X songs in the list (Most recent favorites)\n",
+          "\t\t\t\t[-X] ~ Means select the last X songs in the list (Least recent favorites)\n",
+          "\t\t\t\t[X,Y] ~ Select all songs from X to Y (X & Y can also be negative like above)\n",
+          "\t\t\t\t[ALL] ~ Select all songs in the list\n",
+          "\t\t<yt_url> ~ An url for a YouTube video or playlist\n",
+          "\t\t<sc_url> ~ An url for a SoundCloud video or playlist\n",
+          "\tOptional Flags:\n",
+          "\t\t--shuffle ~ Shuffle the new list before adding to the queue\n",
+          "\t\t--next ~ Add the items to the head of the queue"
+        ],
+        "obj" : ""
+    },
+    "clear" : {
+        "func" : "clear",
+        "detail" : [" ~ Clear the queue"],
+        "obj" : "queue"
+    },
+    "shuffle" : {
+        "func" : "shuffle",
+        "detail" : [" ~ Shuffle queue"],
+        "obj" : "queue"
+    },
+    "volume" : {
+        "func" : "changeVolume",
+        "detail" : [
+          " {<newVolume>} ~ Shows current volume % or makes volume equal to <newVolume>\n",
+          "\t<newVolume> ~ An integer number between 0 and 200"
+        ],
+        "obj" : "queue"
+    },
+    "join" : {
+        "func" : "joinVoice",
+        "detail" : [" ~ Makes bot join the voice channel you are in"],
+        "obj" : "queue"
+    },
+    "play" : {
+        "func" : "playStream",
+        "detail" : [" ~ Starts playing music from the queue (Bot must be in a voice channel)"],
+        "obj" : "queue"
+    },
+    "pause" : {
+        "func" : "pauseStream",
+        "detail" : [" ~ Pause music stream"],
+        "obj" : "queue"
+    },
+    "resume" : {
+        "func" : "resumeStream",
+        "detail" : [" ~ Resume paused music stream"],
+        "obj" : "queue"
+    },
+    "skip" : {
+        "func" : "skipSong",
+        "detail" : [" ~ Skips the current song in the queue"],
+        "obj" : "queue"
+    },
+    "stop" : {
+        "func" : "stopStream",
+        "detail" : [" ~ Stops playing music and leaves voice channel"],
+        "obj" : "queue"
+    },
+    "eval" : {
+        "func" : "runScript",
+        "detail" : [" ~ Allows execution of JavaScript code. ADMIN ONLY."],
+        "obj" : ""
+    }
+}
