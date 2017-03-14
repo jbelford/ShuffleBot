@@ -1,7 +1,7 @@
 {
     "help" : {
         "func" : "help",
-        "detail" : [" ~ Shows the list of all available commands their details."],
+        "detail" : [" ~ Shows the list of all available commands and their details."],
         "obj" : ""
     },
     "download" : {
@@ -60,7 +60,7 @@
         "func" : "changeVolume",
         "detail" : [
           " {<newVolume>} ~ Shows current volume % or makes volume equal to <newVolume>\n",
-          "\t<newVolume> ~ An integer number between 0 and 200"
+          "\t<newVolume> ~ An integer number between 0 and 100"
         ],
         "obj" : "queue"
     },

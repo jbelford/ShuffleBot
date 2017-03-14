@@ -109,7 +109,7 @@ class QueuePlayer {
     this.messageCache = message;
     return new Promise((resolve, reject) => {
       if (_.isNil(this.connection)) return resolve(false);
-      this.dispatcher = this.connection.playStream(this.getNextStream(), { seek: 0, volume: this.volume, passes: 2 });
+      this.dispatcher = this.connection.playStream(this.getNextStream(), { seek: 0, volume: this.volume, passes: 1 });
       this.dispatcher.on('start', () => {
         this.nowPlaying = this.dequeue();
         message.channel.send(`Now playing: **${this.nowPlaying.title}**`);
@@ -120,11 +120,10 @@ class QueuePlayer {
         this.dispatcher = null;
         if (reason !== "user" && this.list.length > 0) {
           console.log("Creating next stream");
-          this.createStream(this.messageCache);
-        } else {
-          this.client.user.setGame(null);
-          console.log("Ended music stream");
+          return this.createStream(this.messageCache);
         }
+        this.client.user.setGame(null);
+        console.log("Ended music stream");
       });
       this.dispatcher.once('error', err => {
         console.log(err);

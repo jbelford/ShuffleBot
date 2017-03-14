@@ -79,6 +79,9 @@ const help = function* (message) {
     string += `${cmdTok}${key}${cmd.detail.join('')}\n\n`;
   });
   message.channel.sendCode('css', string, { split : { prepend : '```css\n', append : '```' } });
+  setTimeout( () => {
+    message.channel.send('For more info check out github: **https://github.com/jbelford/DiscordMusicBot**');
+  }, 1000);
   return false;
 }
 
