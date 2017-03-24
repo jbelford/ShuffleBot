@@ -15,6 +15,7 @@ class QueuePlayer {
     this.dispatcher = null;
     this.messageCache = null;
     this.volume = 1;
+    this.artwork = null;
   }
 
   enqueue(items, top) {
@@ -26,8 +27,14 @@ class QueuePlayer {
     return this.list.shift();
   }
 
-  currentSong() {
-    return _.isNil(this.nowPlaying) ? '' : `${!_.isNil(this.dispatcher) && this.dispatcher.paused ? 'PAUSED ~ ' : ''}` +
+  currentSong(channel) {
+    if (_.isNil(this.nowPlaying)) return '';
+    if (!_.isNil(this.nowPlaying.pic)) {
+      this.artwork.delete().then( () => {
+        this.artwork = channel.sendEmbed({ image : { url : this.nowPlaying.pic } });
+      })
+    }
+    return `${!_.isNil(this.dispatcher) && this.dispatcher.paused ? 'PAUSED ~ ' : ''}` +
         `Currently playing: **${this.nowPlaying.title}** posted by **${this.nowPlaying.poster}**`;
   }
 
@@ -58,7 +65,7 @@ class QueuePlayer {
   show(num, message) {
     if (this.list.length === 0) return 'There is nothing in the queue!';
     else if (this.list.length < num) num = this.list.length;
-    let string = `${this.currentSong()}\`\`\`css\n`;
+    let string = `${this.currentSong(message.channel)}\`\`\`css\n`;
     for (let i = 0; i < num; i++) {
       const song = this.list[i];
       string += `${i + 1}: ${song.title} posted by ${song.poster}\n`;
@@ -112,12 +119,18 @@ class QueuePlayer {
       this.dispatcher = this.connection.playStream(this.getNextStream(), { seek: 0, volume: this.volume, passes: 1 });
       this.dispatcher.on('start', () => {
         this.nowPlaying = this.dequeue();
+        if (!_.isNil(this.nowPlaying.pic)) {
+          message.channel.sendEmbed({ image : { url : this.nowPlaying.pic } }).then( (msg) => {
+            this.artwork = msg;
+          });
+        }
         message.channel.send(`Now playing: **${this.nowPlaying.title}**`);
         this.client.user.setGame(this.nowPlaying.title);
         console.log(`Streaming: ${this.nowPlaying.title}`);
       })
       this.dispatcher.once('end', reason => {
         this.dispatcher = null;
+        this.artwork.delete();
         if (reason !== "user" && this.list.length > 0) {
           console.log("Creating next stream");
           return this.createStream(this.messageCache);

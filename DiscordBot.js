@@ -21,19 +21,13 @@ const cmdTok = '$';
 const validChans = JSON.parse(fs.readFileSync('./config/channels.json', 'utf8'));
 const commands   = JSON.parse(fs.readFileSync('./config/commands.json', 'utf8'));
 const admins     = config.admins;
-let player, music;
+let player;
 
 // Listens for response from Discord
 client.on('ready', wrap( function* () {
   try {
     db = yield db.connect(config.dbUrl);
-    try {
-      yield db.createCollection('users', { strict : true });
-      yield db.collection('users').insert({ num_users: 0 });
-    } catch (e) {}
-    music  = yield db.collection('users').findOne();
     player = new QueuePlayer(client, SC, YT);
-    delete music._id;
     console.log('Bot is ready!');
     if (client.guilds.size === 0 || process.argv.indexOf('-gi') >= 0) {
       const link = yield client.generateInvite(config.botPerms);
@@ -91,44 +85,42 @@ const download = function* (message, content) {
   const user = content[1];
   const resp = yield request(`${SC.API}/resolve?url=http://soundcloud.com/${user}&client_id=${SC.CLIENT_ID}`);
   if (resp.statusCode !== 200) return "Failed to find that user's info!";
-  if (!_.isNil(music[user])) {
-    yield message.channel.send('Removing previous user info...');
-    const query = {};
-    query[user] = music[user];
-    yield db.collection('users').update({}, { $unset : query });
-    delete music[user];
+  const userDB = yield db.collection('users').findOneAndDelete({ permalink : user });
+  if (!_.isNil(userDB.value)) {
+    yield message.channel.send('Removed previous user info...');
   }
   const user_info = JSON.parse(resp.body);
-  music[user_info.permalink] = {
+  const newUser = {
+    "permalink": user_info.permalink,
     "username" : user_info.username,
     "fullname" : user_info.full_name,
-    "id" : user_info.id,
-    "favorites" : user_info.public_favorites_count,
-    "list" : []
-  };
+    "id"       : user_info.id,
+    "favorites": user_info.public_favorites_count,
+    "list"     : []
+  }
   yield message.reply(`Discovered profile of ${user_info.full_name}`);
-  return yield getFavorites(user_info.permalink, message, false);
+  return yield getFavorites(newUser, message, false);
 }
 
 // Updates a user's list of tracks
 const update = function* (message, content) {
   if (content.length < 2) return 'Missing parameters: <user>';
-  const user = content[1];
-  if (_.isNil(music[user])) return `That user doesn't exist! Use \`${cmdTok}download\` instead.`;
-  const resp = yield request(`${SC.API}/users/${music[user].id}/?client_id=${SC.CLIENT_ID}`);
+  const user = yield db.collection('users').findOne({ permalink : content[1] });
+  if (_.isNil(user)) return `That user doesn't exist! Use \`${cmdTok}download\` instead.`;
+  const resp = yield request(`${SC.API}/users/${user.id}/?client_id=${SC.CLIENT_ID}`);
   if (resp.statusCode !== 200) return `Error: ${resp.statusCode}`;
-  const newFavs = JSON.parse(resp.body).public_favorites_count - music[user].favorites;
+  const newFavs = JSON.parse(resp.body).public_favorites_count - user.favorites;
   if (newFavs <= 0) return "It doesn't appear that you have new favorites!\nIf you want to download anyway use `$download` instead.";
-  music[user].favorites += newFavs;
-  yield message.reply(`There appears to be ${newFavs} new songs.\nProceeding to update profile: ${music[user].username}`);
+  user.favorites += newFavs;
+  yield message.reply(`There appears to be ${newFavs} new songs.\nProceeding to update profile: ${user.username}`);
   return yield getFavorites(user, message, newFavs);
 }
 
 // This collects the list of favorites from a user on Soundcloud
 const getFavorites = function* (user, message, newFavs) {
-  let next_href  = `${SC.API}/users/${music[user].id}/favorites?limit=200&linked_partitioning=1&client_id=${SC.CLIENT_ID}`;
+  let next_href  = `${SC.API}/users/${user.id}/favorites?limit=200&linked_partitioning=1&client_id=${SC.CLIENT_ID}`;
   const progress = yield message.channel.send(`Downloading favorites: 0%`);
-  const total    = music[user].favorites;
+  const total    = user.favorites;
   let flag       = true;
   let temp       = [];
   while (next_href && flag) {
@@ -136,11 +128,13 @@ const getFavorites = function* (user, message, newFavs) {
     if (resp.statusCode !== 200) return `Error: ${resp.statusCode}`;
     const data = JSON.parse(resp.body);
     const favs = data.collection.filter( data => data.kind === 'track' && data.streamable).map((data, idx) => {
+      if (!_.isNil(data.artwork_url)) data.artwork_url = data.artwork_url.replace("large", "t500x500")
       return {
         "title"      : data.title,
         "url"        : data.permalink_url,
         "stream_url" : data.stream_url,
         "poster"     : data.user.username,
+        "pic"        : data.artwork_url,
         "src"        : "sc"
       };
     });
@@ -151,28 +145,27 @@ const getFavorites = function* (user, message, newFavs) {
       } else {
         flag = false;
         temp = temp.concat(favs.slice(0, newFavs));
-        music[user].list = temp.concat(music[user].list);
+        user.list = temp.concat(user.list);
       }
-    } else music[user].list = music[user].list.concat(favs);
-    const complete = (Math.round(((newFavs ? temp.length : music[user].list.length) / total) * 100) * 100) / 100;
+    } else user.list = user.list.concat(favs);
+    const complete = Math.round(((newFavs ? temp.length : user.list.length) / total) * 100);
     yield progress.edit(`Downloading favorites: ${complete}%`);
     next_href = _.isNil(data.next_href) ? false : data.next_href;
   }
-  const query = {};
-  query[user] = music[user];
-  yield db.collection('users').update({}, { $set : query });
+  if (newFavs) yield db.collection('users').updateOne({ permalink : user.permalink }, { $set : user });
+  else yield db.collection('users').insertOne(user);
   yield progress.edit('Downloading favorites: 100%');
-  return `Finished ${newFavs ? "updating" : "downloading"} music list for the profile: ${music[user].username}\n` +
-    `${total - music[user].list.length} songs were skipped because they either are playlists or were removed.`;
+  return `Finished ${newFavs ? "updating" : "downloading"} music list for the profile: ${user.username}\n` +
+    `${total - user.list.length} songs were skipped because they either are playlists or were removed.`;
 }
 
 // Lists the users in the database
 const list = function* (message, content) {
   let userList = "Users in database:\n"
   let i = 1;
-  _.forEach(music, (user, key) => {
-    if (key === "num_users") return;
-    userList += `${i++}: ${user.username} ~ Permalink: ${key} ~ Songs: ${user.list.length}\n`;
+  const users = yield db.collection('users').find().toArray();
+  _.forEach(users, (user) => {
+    userList += `${i++}: ${user.username} ~ Permalink: ${user.permalink} ~ Songs: ${user.list.length}\n`;
   })
   message.channel.sendCode('', userList, { split : { prepend : '```\n', append : '```' } });
   return false;
@@ -184,7 +177,9 @@ const editQueue = function* (message, content) {
   const parsed = parse(content.slice(2));
   if (content[1] !== 'add') return `Invalid syntax for ${cmdTok}queue. Check ${cmdTok}help.`;
   else if (parsed.user.length + parsed.yt.length === 0 && _.isNil(parsed.sc)) return yield searchYT(content.slice(2), parsed.next);
-  let collected = _.reduce(parsed.user, (result, value) => getUserList(result, value, message), []);
+  let collected = yield _.reduce(parsed.user, wrap( function* (result, value) {
+    return yield getUserList(result, value, message);
+  }), []);
   collected = collected.concat(yield getYTList(parsed.yt, message));
   collected = collected.concat(yield getSCList(parsed.sc, message));
   if (collected.length === 0) return 'Ultimately... there was nothing to add';
@@ -214,17 +209,17 @@ function parse(args) {
 }
 
 // Gets the list for a user in the database: value => ['username','0,100']
-function getUserList(result, value, message) {
-  const user = value[0];
-  if (_.isNil(music[user])) {
-    message.channel.send(`The user ${user} isn't recognized.`);
+function* getUserList(result, value, message) {
+  const user = yield db.collection('users').findOne({ permalink : value[0] });
+  if (_.isNil(user)) {
+    message.channel.send(`The user ${value[0]} isn't recognized.`);
     return result;
   }
-  message.channel.send(`Adding ${user}'s tracks... Done`);
-  if (value[1].toLowerCase() === "all") return result.concat(music[user].list);
+  message.channel.send(`Adding ${user.permalink}'s tracks... Done`);
+  if (value[1].toLowerCase() === "all") return result.concat(user.list);
   const range = value[1].split(',').map( x => parseInt(x) );
-  if (range.length > 1) return result.concat(music[user].list.slice(range[0], range[1]));
-  const list = range[0] < 0 ? music[user].list.slice(range[0]) : music[user].list.slice(0, range[0]);
+  if (range.length > 1) return result.concat(user.list.slice(range[0], range[1]));
+  const list = range[0] < 0 ? user.list.slice(range[0]) : user.list.slice(0, range[0]);
   return result.concat(list);
 }
 
@@ -248,6 +243,7 @@ function* getYTList(ytData, message) {
           "title"  : song.snippet.title,
           "url"    : `https://www.youtube.com/watch?v=${song.id}`,
           "poster" : song.snippet.channelTitle,
+          "pic"    : song.snippet.thumbnails.high.url,
           "src"    : "yt"
         });
       });
@@ -277,12 +273,14 @@ function* getSCList(endpoint, message) {
     notify.edit(`${notify.content} Done\n${!_.isNil(missed) ? `${missed} tracks were missed as they aren't available.` : ''}`);
     data = data.kind === "track" ? [data] : data.tracks;
     return data.map( song => {
+      if (!_.isNil(song.artwork_url)) song.artwork_url = song.artwork_url.replace("large", "t500x500");
       return {
         "title"      : song.title,
         "url"        : song.permalink_url,
         "stream_url" : song.stream_url,
         "streamable" : song.streamable,
         "poster"     : song.user.username,
+        "pic"        : song.artwork_url,
         "src"        : "sc"
       };
     });
@@ -307,6 +305,7 @@ function* searchYT(searchTerms, next) {
         "title"  : data.snippet.title,
         "url"    : `https://www.youtube.com/watch?v=${data.id.videoId}`,
         "poster" : data.snippet.channelTitle,
+        "pic"    : data.snippet.thumbnails.high.url,
         "src"    : "yt"
     }];
     player.enqueue(item, next);
