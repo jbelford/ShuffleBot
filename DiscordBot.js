@@ -128,13 +128,14 @@ const getFavorites = function* (user, message, newFavs) {
     if (resp.statusCode !== 200) return `Error: ${resp.statusCode}`;
     const data = JSON.parse(resp.body);
     const favs = data.collection.filter( data => data.kind === 'track' && data.streamable).map((data, idx) => {
-      if (!_.isNil(data.artwork_url)) data.artwork_url = data.artwork_url.replace("large", "t500x500")
+      const artwork = _.isNil(data.artwork_url) ? 'http://beatmakerleague.com/images/No_Album_Art.png' :
+          data.artwork_url.replace("large", "t500x500");
       return {
         "title"      : data.title,
         "url"        : data.permalink_url,
         "stream_url" : data.stream_url,
         "poster"     : data.user.username,
-        "pic"        : data.artwork_url,
+        "pic"        : artwork,
         "src"        : "sc"
       };
     });
@@ -173,7 +174,7 @@ const list = function* (message, content) {
 
 // This function gets called when the queue command is received
 const editQueue = function* (message, content) {
-  if (content.length === 1) return player.show(10, message);
+  if (content.length === 1) return yield player.show(10, message);
   const parsed = parse(content.slice(2));
   if (content[1] !== 'add') return `Invalid syntax for ${cmdTok}queue. Check ${cmdTok}help.`;
   else if (parsed.user.length + parsed.yt.length === 0 && _.isNil(parsed.sc)) return yield searchYT(content.slice(2), parsed.next);
@@ -272,15 +273,15 @@ function* getSCList(endpoint, message) {
     const missed = data.kind === "playlist" ? data.track_count - data.tracks.length : null;
     notify.edit(`${notify.content} Done\n${!_.isNil(missed) ? `${missed} tracks were missed as they aren't available.` : ''}`);
     data = data.kind === "track" ? [data] : data.tracks;
-    return data.map( song => {
-      if (!_.isNil(song.artwork_url)) song.artwork_url = song.artwork_url.replace("large", "t500x500");
+    return data.filter( song => song.kind === 'track' && song.streamable).map( song => {
+      const artwork = _.isNil(song.artwork_url) ? 'http://beatmakerleague.com/images/No_Album_Art.png' :
+          song.artwork_url.replace("large", "t500x500");
       return {
         "title"      : song.title,
         "url"        : song.permalink_url,
         "stream_url" : song.stream_url,
-        "streamable" : song.streamable,
         "poster"     : song.user.username,
-        "pic"        : song.artwork_url,
+        "pic"        : artwork,
         "src"        : "sc"
       };
     });

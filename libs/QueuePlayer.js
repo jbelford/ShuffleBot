@@ -14,7 +14,7 @@ class QueuePlayer {
     this.connection = null;
     this.dispatcher = null;
     this.messageCache = null;
-    this.volume = 1;
+    this.volume = 0.5;
     this.artwork = null;
   }
 
@@ -27,13 +27,10 @@ class QueuePlayer {
     return this.list.shift();
   }
 
-  currentSong(channel) {
+  *currentSong(channel) {
     if (_.isNil(this.nowPlaying)) return '';
-    if (!_.isNil(this.nowPlaying.pic)) {
-      this.artwork.delete().then( () => {
-        this.artwork = channel.sendEmbed({ image : { url : this.nowPlaying.pic } });
-      })
-    }
+    yield this.artwork.delete();
+    this.artwork = yield channel.sendEmbed({ image : { url : this.nowPlaying.pic } });
     return `${!_.isNil(this.dispatcher) && this.dispatcher.paused ? 'PAUSED ~ ' : ''}` +
         `Currently playing: **${this.nowPlaying.title}** posted by **${this.nowPlaying.poster}**`;
   }
@@ -62,10 +59,10 @@ class QueuePlayer {
   }
 
   // Prints the queue
-  show(num, message) {
+  *show(num, message) {
     if (this.list.length === 0) return 'There is nothing in the queue!';
     else if (this.list.length < num) num = this.list.length;
-    let string = `${this.currentSong(message.channel)}\`\`\`css\n`;
+    let string = `${yield this.currentSong(message.channel)}\`\`\`css\n`;
     for (let i = 0; i < num; i++) {
       const song = this.list[i];
       string += `${i + 1}: ${song.title} posted by ${song.poster}\n`;
@@ -119,14 +116,12 @@ class QueuePlayer {
       this.dispatcher = this.connection.playStream(this.getNextStream(), { seek: 0, volume: this.volume, passes: 1 });
       this.dispatcher.on('start', () => {
         this.nowPlaying = this.dequeue();
-        if (!_.isNil(this.nowPlaying.pic)) {
-          message.channel.sendEmbed({ image : { url : this.nowPlaying.pic } }).then( (msg) => {
-            this.artwork = msg;
-          });
-        }
-        message.channel.send(`Now playing: **${this.nowPlaying.title}**`);
-        this.client.user.setGame(this.nowPlaying.title);
-        console.log(`Streaming: ${this.nowPlaying.title}`);
+        message.channel.sendEmbed({ image : { url : this.nowPlaying.pic } }).then( (msg) => {
+          this.artwork = msg;
+          message.channel.send(`Now playing: **${this.nowPlaying.title}**`);
+          this.client.user.setGame(this.nowPlaying.title);
+          console.log(`Streaming: ${this.nowPlaying.title}`);
+        });
       })
       this.dispatcher.once('end', reason => {
         this.dispatcher = null;
@@ -150,7 +145,7 @@ class QueuePlayer {
     if (_.isNil(this.dispatcher)) return 'I am not playing anything!';
     else if (this.dispatcher.paused) return 'I am already paused!';
     this.dispatcher.pause();
-    message.channel.send('---**PAUSED**---');
+    message.channel.send('**PAUSED**');
     return false;
   }
 
@@ -159,7 +154,7 @@ class QueuePlayer {
     if (_.isNil(this.dispatcher)) return 'There is nothing to resume!';
     else if (!this.dispatcher.paused) return 'I have already started playing!';
     this.dispatcher.resume();
-    message.channel.send('---**RESUMED**---');
+    message.channel.send('**RESUMED**');
     return false;
   }
 
@@ -170,7 +165,6 @@ class QueuePlayer {
       return "I have skipped the next song!";
     }
     this.dispatcher.end("stream");
-    message.channel.send('---**SKIPPED**---');
     return false;
   }
 
