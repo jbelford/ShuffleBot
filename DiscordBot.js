@@ -177,9 +177,9 @@ const editQueue = function* (message, content) {
   const parsed = parse(content.slice(2));
   if (content[1] !== 'add') return `Invalid syntax for ${cmdTok}queue. Check ${cmdTok}help.`;
   else if (parsed.user.length + parsed.yt.length === 0 && _.isNil(parsed.sc)) return yield searchYT(content.slice(2), parsed.next);
-  let collected = yield _.reduce(parsed.user, wrap( function* (result, value) {
-    return yield getUserList(result, value, message);
-  }), []);
+  let collected = [];
+  for (const x in parsed.user)
+    collected = collected.concat(yield getUserList(parsed.user[x], message));
   collected = collected.concat(yield getYTList(parsed.yt, message));
   collected = collected.concat(yield getSCList(parsed.sc, message));
   if (collected.length === 0) return 'Ultimately... there was nothing to add';
@@ -209,18 +209,18 @@ function parse(args) {
 }
 
 // Gets the list for a user in the database: value => ['username','0,100']
-function* getUserList(result, value, message) {
+function* getUserList(value, message) {
   const user = yield db.collection('users').findOne({ permalink : value[0] });
   if (_.isNil(user)) {
     message.channel.send(`The user ${value[0]} isn't recognized.`);
-    return result;
+    return [];
   }
   message.channel.send(`Adding ${user.permalink}'s tracks... Done`);
-  if (value[1].toLowerCase() === "all") return result.concat(user.list);
+  if (value[1].toLowerCase() === "all") return user.list;
   const range = value[1].split(',').map( x => parseInt(x) );
-  if (range.length > 1) return result.concat(user.list.slice(range[0], range[1]));
+  if (range.length > 1) return user.list.slice(range[0], range[1]);
   const list = range[0] < 0 ? user.list.slice(range[0]) : user.list.slice(0, range[0]);
-  return result.concat(list);
+  return list;
 }
 
 // Returns a list of songs given the youtube url ID
