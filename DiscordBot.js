@@ -240,11 +240,14 @@ function* getYTList(ytData, message) {
       const data = JSON.parse(resp.body);
       link = !_.isNil(data.nextPageToken) ? `${base}&pageToken=${data.nextPageToken}` : false;
       _.forEach(data.items, song => {
+        const artwork = _.isNil(song.snippet.thumbnails) ? 'http://beatmakerleague.com/images/No_Album_Art.png' :
+          song.snippet.thumbnails.high.url;
+        const id = type ? song.id : song.snippet.resourceId.videoId;
         collected.push({
           "title"  : song.snippet.title,
-          "url"    : `https://www.youtube.com/watch?v=${song.id}`,
+          "url"    : `https://www.youtube.com/watch?v=${id}`,
           "poster" : song.snippet.channelTitle,
-          "pic"    : song.snippet.thumbnails.high.url,
+          "pic"    : artwork,
           "src"    : "yt"
         });
       });
@@ -302,11 +305,13 @@ function* searchYT(searchTerms, next) {
     if (resp.statusCode !== 200) throw new Error(`Code: ${resp.statusCode}`);
     const data = JSON.parse(resp.body).items[0];
     if (_.isNil(data)) throw new Error('No songs fit that query');
+    const artwork = _.isNil(data.snippet.thumbnails) ? 'http://beatmakerleague.com/images/No_Album_Art.png' :
+          data.snippet.thumbnails.high.url;
     const item = [{
         "title"  : data.snippet.title,
         "url"    : `https://www.youtube.com/watch?v=${data.id.videoId}`,
         "poster" : data.snippet.channelTitle,
-        "pic"    : data.snippet.thumbnails.high.url,
+        "pic"    : artwork,
         "src"    : "yt"
     }];
     player.enqueue(item, next);
