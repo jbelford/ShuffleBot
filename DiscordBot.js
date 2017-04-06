@@ -79,9 +79,9 @@ const help = function* (message) {
   return false;
 }
 
-// Downloads/overwrites user information and then get's their list of favorited tracks
+// Downloads/overwrites user information and then get's their list of favorited tracks (SoundCloud)
 const download = function* (message, content) {
-  if (content.length < 2) return 'Missing parameters: <user>';
+  if (content.length < 2) return 'Missing parameters: <user_permalink>';
   const user = content[1];
   const resp = yield request(`${SC.API}/resolve?url=http://soundcloud.com/${user}&client_id=${SC.CLIENT_ID}`);
   if (resp.statusCode !== 200) return "Failed to find that user's info!";
@@ -98,13 +98,13 @@ const download = function* (message, content) {
     "favorites": user_info.public_favorites_count,
     "list"     : []
   }
-  yield message.reply(`Discovered profile of ${user_info.full_name}`);
-  return yield getFavorites(newUser, message, false);
+  yield message.reply(`Discovered profile of ${newUser.fullname}`);
+  return yield getFavorites(newUser, message, newUser.favorites);
 }
 
-// Updates a user's list of tracks
+// Updates a user's list of tracks.
 const update = function* (message, content) {
-  if (content.length < 2) return 'Missing parameters: <user>';
+  if (content.length < 2) return 'Missing parameters: <user_permalink>';
   const user = yield db.collection('users').findOne({ permalink : content[1] });
   if (_.isNil(user)) return `That user doesn't exist! Use \`${cmdTok}download\` instead.`;
   const resp = yield request(`${SC.API}/users/${user.id}/?client_id=${SC.CLIENT_ID}`);
@@ -117,47 +117,38 @@ const update = function* (message, content) {
 }
 
 // This collects the list of favorites from a user on Soundcloud
-const getFavorites = function* (user, message, newFavs) {
+const getFavorites = function* (user, message, toDownload) {
   let next_href  = `${SC.API}/users/${user.id}/favorites?limit=200&linked_partitioning=1&client_id=${SC.CLIENT_ID}`;
   const progress = yield message.channel.send(`Downloading favorites: 0%`);
-  const total    = user.favorites;
-  let flag       = true;
+  const total    = toDownload;
   let temp       = [];
-  while (next_href && flag) {
+  while (next_href && toDownload) {
     const resp = yield request(next_href);
     if (resp.statusCode !== 200) return `Error: ${resp.statusCode}`;
     const data = JSON.parse(resp.body);
     const favs = data.collection.filter( data => data.kind === 'track' && data.streamable).map((data, idx) => {
-      const artwork = _.isNil(data.artwork_url) ? 'http://beatmakerleague.com/images/No_Album_Art.png' :
-          data.artwork_url.replace("large", "t500x500");
-      return {
-        "title"      : data.title,
-        "url"        : data.permalink_url,
-        "stream_url" : data.stream_url,
-        "poster"     : data.user.username,
-        "pic"        : artwork,
-        "src"        : "sc"
-      };
-    });
-    if (newFavs) {
-      if (newFavs > favs.length) {
-        newFavs -= favs.length;
-        temp = temp.concat(favs);
-      } else {
-        flag = false;
-        temp = temp.concat(favs.slice(0, newFavs));
-        user.list = temp.concat(user.list);
-      }
-    } else user.list = user.list.concat(favs);
-    const complete = Math.round(((newFavs ? temp.length : user.list.length) / total) * 100);
+                   const artwork = _.isNil(data.artwork_url) ? 'http://beatmakerleague.com/images/No_Album_Art.png' :
+                                     data.artwork_url.replace("large", "t500x500");
+                   return {
+                     "title"      : data.title,
+                     "url"        : data.permalink_url,
+                     "stream_url" : data.stream_url,
+                     "poster"     : data.user.username,
+                     "pic"        : artwork,
+                     "src"        : "sc"
+                   };
+                 });
+    temp = toDownload > favs.length ? temp.concat(favs) : temp.concat(favs.slice(0, toDownload));
+    toDownload -= favs.length;
+    const complete = Math.round((temp.length / total) * 100);
     yield progress.edit(`Downloading favorites: ${complete}%`);
-    next_href = _.isNil(data.next_href) ? false : data.next_href;
+    next_href = data.next_href;
   }
-  if (newFavs) yield db.collection('users').updateOne({ permalink : user.permalink }, { $set : user });
-  else yield db.collection('users').insertOne(user);
+  user.list = temp.concat(user.list);
+  const doc = yield db.collection('users').updateOne({ permalink : user.permalink }, { $set : user }, { upsert : true });
   yield progress.edit('Downloading favorites: 100%');
-  return `Finished ${newFavs ? "updating" : "downloading"} music list for the profile: ${user.username}\n` +
-    `${total - user.list.length} songs were skipped because they either are playlists or were removed.`;
+  return `Finished ${_.isNil(doc.upsertedId) ? "updating" : "downloading"} music list for the profile: ${user.username}\n` +
+    `${total - user.list.length} of the songs are private and were not downloaded.`;
 }
 
 // Lists the users in the database
@@ -175,9 +166,9 @@ const list = function* (message, content) {
 // This function gets called when the queue command is received
 const editQueue = function* (message, content) {
   if (content.length === 1) return yield player.show(10, message);
+  else if (content[1] !== 'add') return `Invalid syntax for ${cmdTok}queue. Check ${cmdTok}help.`;
   const parsed = parse(content.slice(2));
-  if (content[1] !== 'add') return `Invalid syntax for ${cmdTok}queue. Check ${cmdTok}help.`;
-  else if (parsed.user.length + parsed.yt.length === 0 && _.isNil(parsed.sc)) return yield searchYT(content.slice(2), parsed.next);
+  if (parsed.user.length + parsed.yt.length === 0 && _.isNil(parsed.sc)) return yield searchYT(content.slice(2), parsed.next);
   let collected = [];
   for (const x in parsed.user)
     collected = collected.concat(yield getUserList(parsed.user[x], message));
@@ -193,19 +184,18 @@ const editQueue = function* (message, content) {
 function parse(args) {
   const data = { user : [], yt : [], sc : null, shuffle: false, next: false };
   args = args.join(' ');
-  const reg1  = /(^|\s)([^\s]+)\s+\[\s*(-?\d+|-?\d+\s*,\s*-?\d+|-\d+|ALL)\s*\]/gi
-  const reg2  = /(^|\s)--shuffle($|\s)/gi
-  const reg3  = /(^|\s)--next($|\s)/gi
+  const dbReg = /(^|\s)([^\s]+)\s+\[\s*(-?\d+|-?\d+\s*,\s*-?\d+|ALL)\s*\]/gi
+  const regF1 = /(^|\s)--shuffle($|\s)/gi
+  const regF2 = /(^|\s)--next($|\s)/gi
   const regYT = /(^|\s)(https?:\/\/)?(www\.)?youtube\.com\/(watch|playlist)\?(v|list)=([^\s&]+)[^\s]*($|\s)/g
   const regSC = /(^|\s)(https?:\/\/)?(www\.)?soundcloud\.com(\/[^\s]+)($|\s)/g
   let match;
-  for (let i = 0; (match = reg1.exec(args)) !== null; i++) {
-    data.user[i] = match.slice(2, 4);
-  }
-  if ((match = regYT.exec(args)) !== null) data.yt = match.splice(5, 2).concat([match[0]]);
-  if ((match = regSC.exec(args)) !== null) data.sc = match[4];
-  if (reg2.exec(args) != null) data.shuffle = true;
-  if (reg3.exec(args) != null) data.next = true;
+  while ((match = dbReg.exec(args)) != null)
+    data.user.push(match.slice(2, 4));
+  if ((match = regYT.exec(args)) != null) data.yt = match.splice(5, 2).concat([match[0]]);
+  if ((match = regSC.exec(args)) != null) data.sc = match[4];
+  if (regF1.exec(args) != null) data.shuffle = true;
+  if (regF2.exec(args) != null) data.next = true;
   return data;
 }
 
@@ -219,6 +209,10 @@ function* getUserList(value, message) {
   message.channel.send(`Adding ${user.permalink}'s tracks... Done`);
   if (value[1].toLowerCase() === "all") return user.list;
   const range = value[1].split(',').map( x => parseInt(x) );
+  if (range.filter( x => isNaN(x) ).length) {
+    message.channel.send(`The query for user ${user.permalink} isn't valid.`);
+    return [];
+  }
   if (range.length > 1) return user.list.slice(range[0], range[1]);
   const list = range[0] < 0 ? user.list.slice(range[0]) : user.list.slice(0, range[0]);
   return list;
@@ -241,7 +235,7 @@ function* getYTList(ytData, message) {
       link = !_.isNil(data.nextPageToken) ? `${base}&pageToken=${data.nextPageToken}` : false;
       _.forEach(data.items, song => {
         const artwork = _.isNil(song.snippet.thumbnails) ? 'http://beatmakerleague.com/images/No_Album_Art.png' :
-          song.snippet.thumbnails.high.url;
+                          song.snippet.thumbnails.high.url;
         const id = type ? song.id : song.snippet.resourceId.videoId;
         collected.push({
           "title"  : song.snippet.title,
@@ -274,20 +268,20 @@ function* getSCList(endpoint, message) {
       return []
     }
     const missed = data.kind === "playlist" ? data.track_count - data.tracks.length : null;
-    notify.edit(`${notify.content} Done\n${!_.isNil(missed) ? `${missed} tracks were missed as they aren't available.` : ''}`);
+    notify.edit(`${notify.content} Done\n${!_.isNil(missed) ? `${missed} of the songs are private and can not be streamed.` : ''}`);
     data = data.kind === "track" ? [data] : data.tracks;
     return data.filter( song => song.kind === 'track' && song.streamable).map( song => {
-      const artwork = _.isNil(song.artwork_url) ? 'http://beatmakerleague.com/images/No_Album_Art.png' :
-          song.artwork_url.replace("large", "t500x500");
-      return {
-        "title"      : song.title,
-        "url"        : song.permalink_url,
-        "stream_url" : song.stream_url,
-        "poster"     : song.user.username,
-        "pic"        : artwork,
-        "src"        : "sc"
-      };
-    });
+             const artwork = _.isNil(song.artwork_url) ? 'http://beatmakerleague.com/images/No_Album_Art.png' :
+                               song.artwork_url.replace("large", "t500x500");
+             return {
+               "title"      : song.title,
+               "url"        : song.permalink_url,
+               "stream_url" : song.stream_url,
+               "poster"     : song.user.username,
+               "pic"        : artwork,
+               "src"        : "sc"
+             };
+           });
   } catch (e) {
     if (!_.isNil(e.stack)) console.log(e.stack);
     message.channel.send(`Failed to retrieve info from that soundcloud url! ${e}`);
@@ -306,7 +300,7 @@ function* searchYT(searchTerms, next) {
     const data = JSON.parse(resp.body).items[0];
     if (_.isNil(data)) throw new Error('No songs fit that query');
     const artwork = _.isNil(data.snippet.thumbnails) ? 'http://beatmakerleague.com/images/No_Album_Art.png' :
-          data.snippet.thumbnails.high.url;
+                      data.snippet.thumbnails.high.url;
     const item = [{
         "title"  : data.snippet.title,
         "url"    : `https://www.youtube.com/watch?v=${data.id.videoId}`,
