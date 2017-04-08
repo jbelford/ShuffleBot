@@ -2,6 +2,8 @@
 const _       = require('lodash');
 const request = require('request');
 const ytdl    = require('ytdl-core');
+const co      = require('co');
+const fork    = require('child_process').fork;
 
 class QueuePlayer {
   constructor(client, SC, YT) {
@@ -16,6 +18,21 @@ class QueuePlayer {
     this.messageCache = null;
     this.volume = 0.5;
     this.artwork = null;
+    this.buttons = null;
+    this.child = fork(`./libs/ButtonListener.js`, ['--debug-brk=6001']);
+    this.child.on('message', (data) => {
+      co.wrap(function* (qp, emoji) {
+        if (emoji === '🔀') {
+          yield qp.shuffle();
+          yield qp.show(10, qp.buttons.src);
+        } else if (emoji === '⏏') yield qp.show(10, qp.buttons.src);
+        else if (emoji === '⏸') yield qp.pauseStream();
+        else if (emoji === '▶') yield qp.resumeStream();
+        else if (emoji === '⏭') yield qp.skipSong();
+        else if (emoji === '⏹') yield qp.stopStream();
+      })(this, data.emoji);
+    });
+    this.child.send({ type : "start", token : this.client.token });
   }
 
   enqueue(items, top) {
@@ -68,7 +85,10 @@ class QueuePlayer {
       string += `${i + 1}: ${song.title} posted by ${song.poster}\n`;
     }
     string += this.list.length - num > 0 ? `...\nPlus ${this.list.length - num} other songs` : '';
-    message.channel.send(`${string}\`\`\``);
+    if (!_.isNil(this.buttons)) yield this.buttons.src.delete();
+    const list = yield message.channel.send(`${string}\`\`\``);
+    this.buttons = yield addButtons(list, !_.isNil(this.nowPlaying), true, !_.isNil(this.dispatcher) && !this.dispatcher.paused);
+    this.child.send({ type : "update", chanID : this.buttons.src.channel.id, msgID : this.buttons.src.id });
     return false;
   }
 
@@ -94,6 +114,7 @@ class QueuePlayer {
     else if (!_.isNil(this.connection) && this.connection.channel.id === message.member.voiceChannelID) return `I'm already there!`;
     this.voice = this.client.channels.get(message.member.voiceChannelID);
     this.connection = yield this.voice.join();
+    yield message.react('👏');
     return false;
   }
 
@@ -116,27 +137,40 @@ class QueuePlayer {
       this.dispatcher = this.connection.playStream(this.getNextStream(), { seek: 0, volume: this.volume, passes: 1 });
       this.dispatcher.on('start', () => {
         this.nowPlaying = this.dequeue();
-        message.channel.sendEmbed({ image : { url : this.nowPlaying.pic } }).then( (msg) => {
-          this.artwork = msg;
-          message.channel.send(`Now playing: **${this.nowPlaying.title}**`);
+        co.wrap( function* (qp) {
+          const artwork   = yield message.channel.sendEmbed({ image : { url : qp.nowPlaying.pic } });
+          const msg       = yield message.channel.send(`Now playing: *${qp.nowPlaying.title}*`);
+          const buttonMsg = yield addButtons(msg, true, false, true);
+          return { "art" : artwork, "buttons" : buttonMsg };
+        })(this).then((data) => {
+          this.artwork = data.art;
+          this.buttons = data.buttons;
           this.client.user.setGame(this.nowPlaying.title);
+          this.child.send({ type : 'update', chanID : this.buttons.src.channel.id, msgID : this.buttons.src.id });
           console.log(`Streaming: ${this.nowPlaying.title}`);
         });
-      })
+      });
       this.dispatcher.once('end', reason => {
-        this.dispatcher = null;
-        this.artwork.delete();
-        if (reason !== "user" && this.list.length > 0) {
-          console.log("Creating next stream");
-          return this.createStream(this.messageCache);
-        }
-        this.client.user.setGame(null);
-        console.log("Ended music stream");
+        co.wrap( function* (qp) {
+          yield qp.artwork.delete();
+          yield qp.buttons.src.clearReactions();
+        })(this).then( () => {
+          this.buttons.src.edit(`Played: *${this.nowPlaying.title}*`);
+          this.dispatcher = null;
+          this.buttons = null;
+          if (reason !== "user" && this.list.length > 0) {
+            console.log("Creating next stream");
+            return this.createStream(this.messageCache);
+          }
+          this.client.user.setGame(null);
+          this.child.send({ type : 'stop' });
+          console.log("Ended music stream");
+        });
       });
       this.dispatcher.once('error', err => {
         console.log(err);
       });
-      return resolve('Music stream started');
+      message.react('🤘').then(() => resolve('Music stream started'));
     });
   }
 
@@ -145,7 +179,11 @@ class QueuePlayer {
     if (_.isNil(this.dispatcher)) return 'I am not playing anything!';
     else if (this.dispatcher.paused) return 'I am already paused!';
     this.dispatcher.pause();
-    message.channel.send('**PAUSED**');
+    if (!_.isNil(message)) yield message.delete();
+    yield this.buttons.src.clearReactions();
+    this.buttons.src = yield this.buttons.src.edit(`Paused: *${this.nowPlaying.title}*`);
+    this.buttons = yield addButtons(this.buttons.src, true, false, false);
+    this.child.send({ type : "update", chanID : this.buttons.src.channel.id, msgID : this.buttons.src.id });
     return false;
   }
 
@@ -154,7 +192,11 @@ class QueuePlayer {
     if (_.isNil(this.dispatcher)) return 'There is nothing to resume!';
     else if (!this.dispatcher.paused) return 'I have already started playing!';
     this.dispatcher.resume();
-    message.channel.send('**RESUMED**');
+    if (!_.isNil(message)) yield message.delete();
+    yield this.buttons.src.clearReactions();
+    this.buttons.src = yield this.buttons.src.edit(`Now playing: *${this.nowPlaying.title}*`);
+    this.buttons = yield addButtons(this.buttons.src, true, false, true);
+    this.child.send({ type : "update", chanID : this.buttons.src.channel.id, msgID : this.buttons.src.id });
     return false;
   }
 
@@ -164,6 +206,7 @@ class QueuePlayer {
       this.dequeue();
       return "I have skipped the next song!";
     }
+    if (!_.isNil(message)) yield message.react('👌');
     this.dispatcher.end("stream");
     return false;
   }
@@ -174,8 +217,30 @@ class QueuePlayer {
     if (!_.isNil(this.dispatcher)) this.dispatcher.end('user');
     this.connection.disconnect(); this.voice.leave();
     this.dispatcher = null; this.connection = null; this.voice = null;
+    if (!_.isNil(message)) yield message.react('😢');
     return false;
   }
+}
+
+// Adds emoji reactions to a message
+function* addButtons(message, isPlaying, showShuffle, showPause) {
+  const qB = yield message.react(showShuffle ? '🔀' : '⏏');
+  if (!isPlaying) return message;
+  yield timeoutPromise(250);
+  const pB = yield message.react(showPause ? '⏸' : '▶');
+  yield timeoutPromise(250);
+  const sB = yield message.react('⏭');
+  yield timeoutPromise(250);
+  const stB = yield message.react('⏹');
+  return { src : message, queueB : qB, pauseB : pB, skipB : sB, stopB : stB, isShuffle: showShuffle };
+}
+
+function timeoutPromise(time) {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      resolve(true);
+    }, time);
+  });
 }
 
 module.exports = QueuePlayer;

@@ -4,6 +4,7 @@
   "description": "Integrates SoundCloud with discord",
   "main": "DiscordBot.js",
   "dependencies": {
+    "co": "^4.6.0",
     "co-express": "^1.2.2",
     "co-request": "^1.0.0",
     "discord.js": "^11.0.0",
