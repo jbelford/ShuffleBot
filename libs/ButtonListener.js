@@ -1,11 +1,10 @@
 "use strict"
 
-const _       = require('lodash');
-const request = require('co-request');
 const wrap    = require('co-express');
 const Discord = require('discord.js');
 const client  = new Discord.Client();
 
+// Listens for the parent process to send information
 process.on('message', wrap( function* (data) {
   if (data.type === "start") return yield client.login(data.token);
   if (data.type === "stop") return;
@@ -13,14 +12,16 @@ process.on('message', wrap( function* (data) {
   if (update) process.send({ emoji : update.emoji.toString() });
 }));
 
-// Pings discord every so often to check if any of the buttons have been pressed
+// Pings discord every so often to check if any of the buttons have been pressed.
+// If we receive another message this loop will close.
 function* listenForUpdates(channel, msgID) {
   let loop = true;
   process.on('message', data => {
     loop = false;
-  });
+  })
   while (loop) {
-    yield timeoutPromise(250);
+    yield timeoutPromise(500);
+    if (!loop) break;
     const message = yield channel.fetchMessage(msgID);
     const reactions = message.reactions.array();
     for (const x in reactions) {

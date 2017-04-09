@@ -176,7 +176,7 @@ const editQueue = function* (message, content) {
   collected = collected.concat(yield getSCList(parsed.sc, message));
   if (collected.length === 0) return 'Ultimately... there was nothing to add';
   if (parsed.shuffle) collected = yield player.shuffle(null, null, collected);
-  player.enqueue(collected, parsed.next);
+  yield player.enqueue(collected, parsed.next);
   return `Successfully added songs to the queue!`
 }
 
@@ -308,7 +308,7 @@ function* searchYT(searchTerms, next) {
         "pic"    : artwork,
         "src"    : "yt"
     }];
-    player.enqueue(item, next);
+    yield player.enqueue(item, next);
     return `Successfully enqueued *${item[0].title}*${next ? ' to be played next!' : ''}`;
   } catch (e) {
     return `YouTube search failed: ${e}`

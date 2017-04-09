@@ -25,7 +25,7 @@ class QueuePlayer {
         if (emoji === '🔀') {
           yield qp.shuffle();
           yield qp.show(10, qp.buttons.src);
-        } else if (emoji === '⏏') yield qp.show(10, qp.buttons.src);
+        } else if (emoji === '⏏' && qp.list.length) yield qp.show(10, qp.buttons.src);
         else if (emoji === '⏸') yield qp.pauseStream();
         else if (emoji === '▶') yield qp.resumeStream();
         else if (emoji === '⏭') yield qp.skipSong();
@@ -35,9 +35,14 @@ class QueuePlayer {
     this.child.send({ type : "start", token : this.client.token });
   }
 
-  enqueue(items, top) {
+  *enqueue(items, top) {
     if (top) this.list = items.concat(this.list);
     else this.list = this.list.concat(items);
+    if (!_.isNil(this.buttons) && this.list.length === items.length) {
+      yield this.buttons.src.clearReactions();
+      this.buttons = yield addButtons(this.buttons.src, !_.isNil(this.nowPlaying), false, true,
+                        !_.isNil(this.dispatcher) && !this.dispatcher.paused);
+    }
   }
 
   dequeue() {
@@ -48,12 +53,20 @@ class QueuePlayer {
     if (_.isNil(this.nowPlaying)) return '';
     yield this.artwork.delete();
     this.artwork = yield channel.sendEmbed({ image : { url : this.nowPlaying.pic } });
-    return `${!_.isNil(this.dispatcher) && this.dispatcher.paused ? 'PAUSED ~ ' : ''}` +
-        `Currently playing: **${this.nowPlaying.title}** posted by **${this.nowPlaying.poster}**`;
+    if (_.isNil(this.dispatcher)) return '';
+    return playMsg(this.nowPlaying, this.dispatcher.paused);
   }
 
-  *clear() {
+  *clear(message) {
+    yield message.delete();
     this.list = [];
+    if (!_.isNil(this.buttons)) {
+      const newMsg = playMsg(this.nowPlaying, !_.isNil(this.dispatcher) && this.dispatcher.paused);
+      if (this.buttons.src.content !== newMsg) this.buttons.src.edit(newMsg);
+      yield this.buttons.src.clearReactions();
+      this.buttons = yield addButtons(this.buttons.src, !_.isNil(this.nowPlaying), false, false,
+                      !_.isNil(this.dispatcher) && !this.dispatcher.paused);
+    }
     return 'I have cleared the queue';
   }
 
@@ -87,7 +100,7 @@ class QueuePlayer {
     string += this.list.length - num > 0 ? `...\nPlus ${this.list.length - num} other songs` : '';
     if (!_.isNil(this.buttons)) yield this.buttons.src.delete();
     const list = yield message.channel.send(`${string}\`\`\``);
-    this.buttons = yield addButtons(list, !_.isNil(this.nowPlaying), true, !_.isNil(this.dispatcher) && !this.dispatcher.paused);
+    this.buttons = yield addButtons(list, !_.isNil(this.nowPlaying), true, true, !_.isNil(this.dispatcher) && !this.dispatcher.paused);
     this.child.send({ type : "update", chanID : this.buttons.src.channel.id, msgID : this.buttons.src.id });
     return false;
   }
@@ -139,8 +152,9 @@ class QueuePlayer {
         this.nowPlaying = this.dequeue();
         co.wrap( function* (qp) {
           const artwork   = yield message.channel.sendEmbed({ image : { url : qp.nowPlaying.pic } });
-          const msg       = yield message.channel.send(`Now playing: *${qp.nowPlaying.title}*`);
-          const buttonMsg = yield addButtons(msg, true, false, true);
+          const msg       = yield message.channel.send(playMsg(qp.nowPlaying, false));
+          if (!_.isNil(qp.buttons)) yield qp.buttons.src.delete();
+          const buttonMsg = yield addButtons(msg, true, false, qp.list.length, true);
           return { "art" : artwork, "buttons" : buttonMsg };
         })(this).then((data) => {
           this.artwork = data.art;
@@ -164,6 +178,7 @@ class QueuePlayer {
           }
           this.client.user.setGame(null);
           this.child.send({ type : 'stop' });
+          this.messageCache.channel.reply(`Music stream ended`);
           console.log("Ended music stream");
         });
       });
@@ -181,8 +196,8 @@ class QueuePlayer {
     this.dispatcher.pause();
     if (!_.isNil(message)) yield message.delete();
     yield this.buttons.src.clearReactions();
-    this.buttons.src = yield this.buttons.src.edit(`Paused: *${this.nowPlaying.title}*`);
-    this.buttons = yield addButtons(this.buttons.src, true, false, false);
+    this.buttons.src = yield this.buttons.src.edit(playMsg(this.nowPlaying, true));
+    this.buttons = yield addButtons(this.buttons.src, true, false, this.list.length, false);
     this.child.send({ type : "update", chanID : this.buttons.src.channel.id, msgID : this.buttons.src.id });
     return false;
   }
@@ -194,8 +209,8 @@ class QueuePlayer {
     this.dispatcher.resume();
     if (!_.isNil(message)) yield message.delete();
     yield this.buttons.src.clearReactions();
-    this.buttons.src = yield this.buttons.src.edit(`Now playing: *${this.nowPlaying.title}*`);
-    this.buttons = yield addButtons(this.buttons.src, true, false, true);
+    this.buttons.src = yield this.buttons.src.edit(playMsg(this.nowPlaying, false));
+    this.buttons = yield addButtons(this.buttons.src, true, false, this.list.length, true);
     this.child.send({ type : "update", chanID : this.buttons.src.channel.id, msgID : this.buttons.src.id });
     return false;
   }
@@ -223,16 +238,23 @@ class QueuePlayer {
 }
 
 // Adds emoji reactions to a message
-function* addButtons(message, isPlaying, showShuffle, showPause) {
-  const qB = yield message.react(showShuffle ? '🔀' : '⏏');
-  if (!isPlaying) return message;
+function* addButtons(message, isPlaying, showShuffle, showEject, showPause) {
+  if (showEject) yield message.react(showShuffle ? '🔀' : '⏏');
+  if (!isPlaying) return { src : message, isShuffle : showShuffle };
   yield timeoutPromise(250);
-  const pB = yield message.react(showPause ? '⏸' : '▶');
+  yield message.react(showPause ? '⏸' : '▶');
   yield timeoutPromise(250);
-  const sB = yield message.react('⏭');
+  yield message.react('⏭');
   yield timeoutPromise(250);
-  const stB = yield message.react('⏹');
-  return { src : message, queueB : qB, pauseB : pB, skipB : sB, stopB : stB, isShuffle: showShuffle };
+  yield message.react('⏹');
+  return { src : message, isShuffle: showShuffle };
+}
+
+// So I only have to format this once.
+function playMsg(nowPlaying, paused) {
+  let msg = paused ? 'Paused: ' : 'Now playing: ';
+  msg += `**${nowPlaying.title}** posted by **${nowPlaying.poster}**`;
+  return msg;
 }
 
 function timeoutPromise(time) {
