@@ -172,13 +172,14 @@ class QueuePlayer {
           this.buttons.src.edit(`Played: *${this.nowPlaying.title}*`);
           this.dispatcher = null;
           this.buttons = null;
+          this.nowPlaying = null;
           if (reason !== "user" && this.list.length > 0) {
             console.log("Creating next stream");
             return this.createStream(this.messageCache);
           }
           this.client.user.setGame(null);
           this.child.send({ type : 'stop' });
-          this.messageCache.channel.reply(`Music stream ended`);
+          this.messageCache.reply(`Music stream ended`);
           console.log("Ended music stream");
         });
       });
