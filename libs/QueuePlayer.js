@@ -51,7 +51,7 @@ class QueuePlayer {
 
   *currentSong(channel) {
     if (_.isNil(this.nowPlaying)) return '';
-    yield this.artwork.delete();
+    if (!_.isNil(this.artwork)) yield this.artwork.delete();
     this.artwork = yield channel.sendEmbed({ image : { url : this.nowPlaying.pic } });
     if (_.isNil(this.dispatcher)) return '';
     return playMsg(this.nowPlaying, this.dispatcher.paused);
@@ -102,6 +102,7 @@ class QueuePlayer {
     const list = yield message.channel.send(`${string}\`\`\``);
     this.buttons = yield addButtons(list, !_.isNil(this.nowPlaying), true, true, !_.isNil(this.dispatcher) && !this.dispatcher.paused);
     this.child.send({ type : "update", chanID : this.buttons.src.channel.id, msgID : this.buttons.src.id });
+    this.messageCache = message;
     return false;
   }
 
@@ -151,8 +152,8 @@ class QueuePlayer {
       this.dispatcher.on('start', () => {
         this.nowPlaying = this.dequeue();
         co.wrap( function* (qp) {
-          const artwork   = yield message.channel.sendEmbed({ image : { url : qp.nowPlaying.pic } });
-          const msg       = yield message.channel.send(playMsg(qp.nowPlaying, false));
+          const artwork   = yield qp.messageCache.channel.sendEmbed({ image : { url : qp.nowPlaying.pic } });
+          const msg       = yield qp.messageCache.channel.send(playMsg(qp.nowPlaying, false));
           if (!_.isNil(qp.buttons)) yield qp.buttons.src.delete();
           const buttonMsg = yield addButtons(msg, true, false, qp.list.length, true);
           return { "art" : artwork, "buttons" : buttonMsg };
