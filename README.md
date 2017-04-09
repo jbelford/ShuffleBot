@@ -1,7 +1,7 @@
 # **Discord Music Bot**
 A bot for playing music in voice channels on Discord. 
 
-![alt-text](https://github.com/jbelford/DiscordMusicBot/img/example.gif "Example image");
+![alt-text](https://github.com/jbelford/DiscordMusicBot/raw/master/img/example.gif "Example image")
 
 ## General Features
 * Play queued songs in voice channels
