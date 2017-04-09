@@ -8,6 +8,7 @@ A bot for playing music in voice channels on Discord.
 * Songs can be requested via SoundCloud or YouTube URL's 
 * Playlists can be added to the queue (SoundCloud & YouTube)
 * Can download SoundCloud users' favorites & add to queue on the fly
+* **NEW** - Emoji reactions used as buttons to control player (One of the first of its kind!)
 
 ## Music Queue Features
 * Songs can be added via URLs from SoundCloud or YouTube (ex: ```$queue add https://www.youtube.com/watch?v=HEXWRTEbj1I```). If URL is a playlist then all songs will be added to the queue
