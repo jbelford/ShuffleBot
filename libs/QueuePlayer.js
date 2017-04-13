@@ -62,9 +62,9 @@ class QueuePlayer {
         this.playCard.delete();
         this.playCard = yield this.playCard.channel.sendEmbed(createEmbed(this.nowPlaying, this.dispatcher.paused, this.peek()));
         this.buttons = yield addButtons(this.playCard, true, false, false, !this.dispatcher.paused);
-        process.send({ type : "update", chanID : this.playCard.channel.id, msgID : this.playCard.id });
+        this.child.send({ type : "update", chanID : this.playCard.channel.id, msgID : this.playCard.id });
       } else {
-        process.send({ type : "stop" });
+        this.child.send({ type : "stop" });
       }
     }
     return 'I have cleared the queue';
@@ -114,7 +114,7 @@ class QueuePlayer {
     const list = yield message.channel.sendEmbed(queueEmbed);
     this.buttons = yield addButtons(list, !_.isNil(this.nowPlaying), true, true, !_.isNil(this.dispatcher) && !this.dispatcher.paused);
     this.child.send({ type : "update", chanID : this.buttons.src.channel.id, msgID : this.buttons.src.id });
-    this.messageCache = message;
+    if (!message.author.bot) this.messageCache = message;
     return false;
   }
 
