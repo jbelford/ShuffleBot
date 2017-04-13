@@ -24,7 +24,7 @@ const admins     = config.admins;
 let player;
 
 // Listens for response from Discord
-client.on('ready', wrap( function* () {
+client.once('ready', wrap( function* () {
   try {
     db = yield db.connect(config.dbUrl);
     player = new QueuePlayer(client, SC, YT);
@@ -35,6 +35,7 @@ client.on('ready', wrap( function* () {
     }
   } catch (err) {
     console.log('Failed to connect to MongoDB server. Closing program.');
+    console.log(err);
     process.exit(0);
   }
 }));
