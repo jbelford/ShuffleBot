@@ -64,6 +64,11 @@ client.on('message', wrap( function* (message) {
   }
 }));
 
+// If an error occurs
+client.on('error', e => {
+  console.log(e);
+});
+
 client.login(token);
 
 // Returns a message that displays the list of commands
@@ -94,12 +99,11 @@ const download = function* (message, content) {
   const newUser = {
     "permalink": user_info.permalink,
     "username" : user_info.username,
-    "fullname" : user_info.full_name,
     "id"       : user_info.id,
     "favorites": user_info.public_favorites_count,
     "list"     : []
   }
-  yield message.reply(`Discovered profile of ${newUser.fullname}`);
+  yield message.reply(`Discovered profile of ${user_info.full_name}`);
   return yield getFavorites(newUser, message, newUser.favorites);
 }
 
@@ -262,7 +266,7 @@ function* getSCList(endpoint, message) {
   const notify = yield message.channel.send('Retrieving songs from soundcloud url...');
   try {
     const resp = yield request(`${SC.API}/resolve?url=http://soundcloud.com${endpoint}&client_id=${SC.CLIENT_ID}`);
-    if (resp.statusCode !== 200) throw new Error(`Code: ${resp.statusCode}`);
+    if (resp.statusCode !== 200) throw new Error(resp.statusCode);
     let data = JSON.parse(resp.body);
     if (data.kind !== "track" && data.kind !== "playlist") {
       notify.edit(`${notify.content} Failed. Not a track or playlist.`);
