@@ -12,14 +12,18 @@ class QueuePlayer {
     this.YT = YT;
     this.list = [];
     this.nowPlaying = null;
+
     this.voice = null;
     this.connection = null;
     this.dispatcher = null;
-    this.messageCache = null;
     this.volume = 0.5;
+
+    this.messageCache = null;
     this.playCard = null;
     this.buttons = null;
+
     this.child = fork(`./libs/ButtonListener.js`, ['--debug-brk=6001']);
+
     this.child.on('message', (data) => {
       co.wrap(function* (qp, emoji) {
         if (emoji === '🔀') {
@@ -32,6 +36,7 @@ class QueuePlayer {
         else if (emoji === '⏹') yield qp.stopStream();
       })(this, data.emoji);
     });
+
     this.child.send({ type : "start", token : this.client.token });
   }
 
@@ -163,6 +168,7 @@ class QueuePlayer {
     return new Promise((resolve, reject) => {
       if (_.isNil(this.connection)) return resolve(false);
       this.dispatcher = this.connection.playStream(this.getNextStream(), { seek: 0, volume: this.volume, passes: 1 });
+
       this.dispatcher.on('start', () => {
         this.nowPlaying = this.dequeue();
         co.wrap( function* (qp) {
@@ -178,6 +184,7 @@ class QueuePlayer {
           console.log(`Streaming: ${this.nowPlaying.title}`);
         });
       });
+
       this.dispatcher.once('end', reason => {
         this.playCard.delete();
         this.buttons.src.delete();
@@ -195,9 +202,11 @@ class QueuePlayer {
         this.messageCache.reply(`Music stream ended`);
         console.log("Ended music stream");
       });
+
       this.dispatcher.once('error', err => {
         console.log(err);
       });
+      
       resolve('Music stream started');
     });
   }

@@ -104,30 +104,16 @@ const download = function* (message, content) {
     "list"     : []
   }
   yield message.reply(`Discovered profile of ${user_info.full_name}`);
-  return yield getFavorites(newUser, message, newUser.favorites);
-}
-
-// Updates a user's list of tracks.
-const update = function* (message, content) {
-  if (content.length < 2) return 'Missing parameters: <user_permalink>';
-  const user = yield db.collection('users').findOne({ permalink : content[1] });
-  if (_.isNil(user)) return `That user doesn't exist! Use \`${cmdTok}download\` instead.`;
-  const resp = yield request(`${SC.API}/users/${user.id}/?client_id=${SC.CLIENT_ID}`);
-  if (resp.statusCode !== 200) return `Error: ${resp.statusCode}`;
-  const newFavs = JSON.parse(resp.body).public_favorites_count - user.favorites;
-  if (newFavs <= 0) return "It doesn't appear that you have new favorites!\nIf you want to download anyway use `$download` instead.";
-  user.favorites += newFavs;
-  yield message.reply(`There appears to be ${newFavs} new songs.\nProceeding to update profile: ${user.username}`);
-  return yield getFavorites(user, message, newFavs);
+  return yield getFavorites(newUser, message);
 }
 
 // This collects the list of favorites from a user on Soundcloud
-const getFavorites = function* (user, message, toDownload) {
+const getFavorites = function* (user, message) {
   let next_href  = `${SC.API}/users/${user.id}/favorites?limit=200&linked_partitioning=1&client_id=${SC.CLIENT_ID}`;
   const progress = yield message.channel.send(`Downloading favorites: 0%`);
-  const total    = toDownload;
+  const total    = user.favorites;
   let temp       = [];
-  while (next_href && toDownload) {
+  while (next_href) {
     const resp = yield request(next_href);
     if (resp.statusCode !== 200) return `Error: ${resp.statusCode}`;
     const data = JSON.parse(resp.body);
@@ -143,16 +129,15 @@ const getFavorites = function* (user, message, toDownload) {
                      "src"        : "sc"
                    };
                  });
-    temp = toDownload > favs.length ? temp.concat(favs) : temp.concat(favs.slice(0, toDownload));
-    toDownload -= favs.length;
+    temp = temp.concat(favs);
     const complete = Math.round((temp.length / total) * 100);
     yield progress.edit(`Downloading favorites: ${complete}%`);
     next_href = data.next_href;
   }
-  user.list = temp.concat(user.list);
+  user.list = temp;
   const doc = yield db.collection('users').updateOne({ permalink : user.permalink }, { $set : user }, { upsert : true });
   yield progress.edit('Downloading favorites: 100%');
-  return `Finished ${_.isNil(doc.upsertedId) ? "updating" : "downloading"} music list for the profile: ${user.username}\n` +
+  return `Finished downloading music list for the profile: ${user.username}\n` +
     `${total - user.list.length} of the songs are private and were not downloaded.`;
 }
 
@@ -168,12 +153,15 @@ const list = function* (message, content) {
   return false;
 }
 
-// This function gets called when the queue command is received
-const editQueue = function* (message, content) {
-  if (content.length === 1) return yield player.show(10, message);
-  else if (content[1] !== 'add') return `Invalid syntax for ${cmdTok}queue. Check ${cmdTok}help.`;
-  const parsed = parse(content.slice(2));
-  if (parsed.user.length + parsed.yt.length === 0 && _.isNil(parsed.sc)) return yield searchYT(content.slice(2), parsed.next);
+// Show the queue
+const showQueue = function* (message, content) {
+  return yield player.show(10, message);
+}
+
+// This function gets called when the add command is received
+const addSong = function* (message, content) {
+  const parsed = parse(content.slice(1));
+  if (parsed.user.length + parsed.yt.length === 0 && _.isNil(parsed.sc)) return yield searchYT(content.slice(1), parsed.next);
   let collected = [];
   for (const x in parsed.user)
     collected = collected.concat(yield getUserList(parsed.user[x], message));

@@ -12,23 +12,22 @@
         ],
         "obj" : ""
     },
-    "update" : {
-        "func" : "update",
-        "detail" : [
-          " <user_permalink> ~ Updates a user's favorites if they are in the database (Only adds new favorites)\n",
-          "\t<user_permalink> ~ Same as above"
-        ],
-        "obj" : ""
-    },
     "list" : {
         "func" : "list",
         "detail" : [" ~ Shows the list of users whose Soundcloud favorites are in the database"],
         "obj" : ""
     },
     "queue" : {
-        "func" : "editQueue",
+        "func" : "showQueue",
         "detail" : [
-          " {add (<query> | <specific>)} ~ Shows the queue or adds items to the queue if arguments are provided\n",
+          " ~ Shows the list of songs in the queue"
+        ],
+        "obj" : ""
+    },
+    "add" : {
+        "func" : "addSong",
+        "detail" : [
+          " (<query> | <specific>) ~ Adds items to the queue\n",
           "\t<query> ~ Search terms for a song. Queues the first result from youtube.\n",
           "\t<specific> = <user_data>+ &| <yt_url> &| <sc_url>\n",
           "\t\t<user_data> = <user_permalink> <range>\n",
