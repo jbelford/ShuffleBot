@@ -13,11 +13,11 @@
     "lodash": "^4.17.4",
     "mongodb": "^2.2.22",
     "node-cleanup": "^2.1.2",
-    "node-opus": "^0.2.4",
+    "node-opus": "^0.2.6",
     "opusscript": "0.0.2",
     "request": "^2.79.0",
     "uws": "^0.14.5",
-    "ytdl-core": "^0.7.24"
+    "ytdl-core": "^0.14.0"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
