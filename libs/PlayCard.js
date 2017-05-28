@@ -2,7 +2,6 @@
 
 const _              = require('lodash');
 const timeoutPromise = require('./Misc.js').timeoutPromise;
-const co             = require('co');
 
 class PlayCard {
   constructor(embed, isQueue, buttonOptions) {
@@ -115,7 +114,7 @@ class PlayCardManager {
 
   *updateCards() {
     let childMsg = null;
-    if (this.queueCard) {
+    if (this.queueCard && this.queue) {
       childMsg = yield this.newQueueCard(this.queueCard.channel);
     } else if (this.songCard) {
       childMsg = yield this.newSongCard(this.songCard.channel, true);
