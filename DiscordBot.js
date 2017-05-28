@@ -308,6 +308,13 @@ function* searchYT(searchTerms, next) {
   }
 }
 
+// A function for shutting down the bot should the admin-only reset command be read
+const reset = function* (message, content) {
+  if (admins.indexOf(message.author.id) < 0) return 'You do not have permission to use this command!';
+  yield message.reply('Shutting down...');
+  process.exit(1);
+}
+
 // A function for my own personal entertainment..
 const runScript = function* (message, content) {
   if (admins.indexOf(message.author.id) < 0) return 'You do not have permission to use this command!';

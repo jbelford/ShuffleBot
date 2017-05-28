@@ -93,6 +93,11 @@
         "detail" : [" ~ Stops playing music and leaves voice channel"],
         "obj" : "queue"
     },
+    "reset" : {
+        "func" : "reset",
+        "detail" : [" ~ Tells the bot to shut down. Forever.js shall restart the app. ADMIN ONLY"],
+        "obj" : ""
+    },
     "eval" : {
         "func" : "runScript",
         "detail" : [" ~ Allows execution of JavaScript code. ADMIN ONLY."],

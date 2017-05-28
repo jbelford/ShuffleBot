@@ -1,41 +1,36 @@
 "use strict"
 
-const _           = require('lodash');
-const wrap        = require('co-express');
-const request     = require('co-request');
-const nodeCleanup = require('node-cleanup');
-const API         = "https://discordapp.com/api";
+const _              = require('lodash');
+const wrap           = require('co-express');
+const request        = require('co-request');
+const nodeCleanup    = require('node-cleanup');
+const timeoutPromise = require('./Misc.js').timeoutPromise;
+const API            = "https://discordapp.com/api";
 
 let chanID = null;
 let msgID  = null;
+let wait   = true;
 let token;
 
 // Listens for the parent process to send information
 process.on('message', wrap( function* (data) {
   if (data.type === "start") {
     token = data.token;
-    return;
+  } else if (data.type === "continue") {
+    wait = false;
+  } else {
+    chanID = data.chanID;
+    msgID  = data.msgID;
+    wait = false;
   }
-  chanID = data.chanID;
-  msgID  = data.msgID;
 }));
-
-// Timeout that returns a promise so I can yield
-function timeoutPromise(time) {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      resolve(true);
-    }, time);
-  });
-}
-
 
 wrap( function* listenForUpdates() {
   while (1) {
+    yield timeoutPromise(500);
+    if (wait) continue;
     const localChan = chanID;
     const localMsg = msgID;
-    yield timeoutPromise(500);
-    if (_.isNil(localChan) || _.isNil(localMsg)) continue;
     try {
       const message = yield request({
         uri : `${API}/channels/${localChan}/messages/${localMsg}`,
@@ -45,8 +40,7 @@ wrap( function* listenForUpdates() {
       for (const x in reactions) {
         if (reactions[x].count > 1) {
           process.send({ emoji : reactions[x].emoji.name });
-          chanID = null;
-          msgID = null;
+          wait = true;
           break;
         }
       }

@@ -1,9 +1,11 @@
 "use strict"
-const _       = require('lodash');
-const request = require('request');
-const ytdl    = require('ytdl-core');
-const co      = require('co');
-const fork    = require('child_process').fork;
+const _              = require('lodash');
+const request        = require('request');
+const ytdl           = require('ytdl-core');
+const co             = require('co');
+const fork           = require('child_process').fork;
+const timeoutPromise = require('./Misc.js').timeoutPromise;
+const PlayCardManager = require('./PlayCard.js');
 
 class QueuePlayer {
   constructor(client, SC, YT) {
@@ -19,17 +21,15 @@ class QueuePlayer {
     this.volume = 0.5;
 
     this.messageCache = null;
-    this.playCard = null;
-    this.buttons = null;
+
+    this.pcMnger = new PlayCardManager();
 
     this.child = fork(`./libs/ButtonListener.js`, ['--debug-brk=6001']);
 
     this.child.on('message', (data) => {
       co.wrap(function* (qp, emoji) {
-        if (emoji === '🔀') {
-          yield qp.shuffle();
-          yield qp.show(10, qp.buttons.src);
-        } else if (emoji === '⏏' && qp.list.length) yield qp.show(10, qp.buttons.src);
+        if (emoji === '🔀') yield qp.shuffle();
+        else if (emoji === '⏏' && qp.list.length) yield qp.show(10, qp.messageCache);
         else if (emoji === '⏸') yield qp.pauseStream();
         else if (emoji === '▶') yield qp.resumeStream();
         else if (emoji === '⏭') yield qp.skipSong();
@@ -43,11 +43,13 @@ class QueuePlayer {
   *enqueue(items, top) {
     if (top) this.list = items.concat(this.list);
     else this.list = this.list.concat(items);
-    if (!_.isNil(this.buttons) && this.list.length === items.length) {
-      yield this.buttons.src.clearReactions();
-      this.buttons = yield addButtons(this.buttons.src, !_.isNil(this.nowPlaying), false, true,
-                        !_.isNil(this.dispatcher) && !this.dispatcher.paused);
-    }
+    const numItems = Math.min(10, this.list.length);
+    this.pcMnger.setVarious({ 
+      next : this.peek(), 
+      queue : { total : this.list.length, num : numItems, list : this.list.slice(0, numItems) } 
+    });
+    const updateMsg = yield this.pcMnger.updateCards();
+    if (!_.isNil(updateMsg)) this.child.send(updateMsg);
   }
 
   dequeue() {
@@ -61,17 +63,9 @@ class QueuePlayer {
   *clear(message) {
     message.delete();
     this.list = [];
-    if (!_.isNil(this.buttons)) {
-      this.buttons.src.delete();
-      if (!_.isNil(this.playCard)) {
-        this.playCard.delete();
-        this.playCard = yield this.playCard.channel.sendEmbed(createEmbed(this.nowPlaying, this.dispatcher.paused, this.peek()));
-        this.buttons = yield addButtons(this.playCard, true, false, false, !this.dispatcher.paused);
-        this.child.send({ type : "update", chanID : this.playCard.channel.id, msgID : this.playCard.id });
-      } else {
-        this.child.send({ type : "stop" });
-      }
-    }
+    this.pcMnger.setVarious({ next: null, queue: null })
+    const updateMsg = yield this.pcMnger.updateCards();
+    if (!_.isNil(updateMsg)) this.child.send(updateMsg);
     return 'I have cleared the queue';
   }
 
@@ -90,35 +84,21 @@ class QueuePlayer {
     }
     if (list) return copy;
     this.list = copy;
+    const items = this.pcMnger.queue;
+    items.list = this.list.slice(0, items.num);
+    this.pcMnger.setVarious({ next : this.peek(), queue : items });
+    const updateMsg = yield this.pcMnger.updateCards();
+    if (!_.isNil(updateMsg)) this.child.send(updateMsg);
     return 'Successfully shuffled the queue!';
   }
 
   // Prints the queue
-  *show(num, message) {
+  *show(numItems, message) {
     if (this.list.length === 0) return 'There is nothing in the queue!';
-    else if (this.list.length < num) num = this.list.length;
-    if (!_.isNil(this.playCard)) {
-      this.playCard.delete();
-      this.playCard = yield message.channel.sendEmbed(createEmbed(this.nowPlaying, this.dispatcher.paused));
-    }
-    const queueEmbed = {
-      color : 0x1B9857,
-      description : '',
-      author : {
-        name : "Queue",
-        icon_url : "https://cdn0.iconfinder.com/data/icons/audio-visual-material-design-icons/512/queue-music-512.png"
-      }
-    };
-    for (let i = 0; i < num; i++) {
-      const song = this.list[i];
-      queueEmbed.description += `${i + 1}:\t**${song.title}**\n`;
-    }
-    if (this.list.length - num > 0)
-      queueEmbed.footer = { text : `Plus ${this.list.length - num} other songs` };
-    if (!_.isNil(this.buttons)) this.buttons.src.delete();
-    const list = yield message.channel.sendEmbed(queueEmbed);
-    this.buttons = yield addButtons(list, !_.isNil(this.nowPlaying), true, true, !_.isNil(this.dispatcher) && !this.dispatcher.paused);
-    this.child.send({ type : "update", chanID : this.buttons.src.channel.id, msgID : this.buttons.src.id });
+    else if (this.list.length < numItems) numItems = this.list.length;
+    this.pcMnger.setQueue({ total: this.list.length, num: numItems, list: this.list.slice(0, numItems) });
+    const updateMsg = yield this.pcMnger.newQueueCard(message.channel);
+    this.child.send(updateMsg);
     if (!message.author.bot) this.messageCache = message;
     return false;
   }
@@ -169,34 +149,27 @@ class QueuePlayer {
       if (_.isNil(this.connection)) return resolve(false);
       this.dispatcher = this.connection.playStream(this.getNextStream(), { seek: 0, volume: this.volume, passes: 1 });
 
-      this.dispatcher.on('start', () => {
+      this.dispatcher.once('start', () => {
         this.nowPlaying = this.dequeue();
+        this.pcMnger.setVarious({ playing : this.nowPlaying, next: this.peek() })
         co.wrap( function* (qp) {
-          const msg = yield qp.messageCache.channel.sendEmbed(createEmbed(qp.nowPlaying, false, qp.peek()));
-          if (!_.isNil(qp.buttons)) yield qp.buttons.src.delete();
-          const buttonMsg = yield addButtons(msg, true, false, qp.list.length, true);
-          return buttonMsg;
-        })(this).then((buttons) => {
-          this.playCard = buttons.src;
-          this.buttons = buttons;
-          this.client.user.setGame(this.nowPlaying.title);
-          this.child.send({ type : 'update', chanID : this.playCard.channel.id, msgID : this.playCard.id });
-          console.log(`Streaming: ${this.nowPlaying.title}`);
-        });
+          yield qp.client.user.setGame(qp.nowPlaying.title);
+          const msg = yield qp.pcMnger.newSongCard(qp.messageCache.channel, true);
+          qp.child.send(msg);
+        })(this)
+        console.log(`Streaming: ${this.nowPlaying.title}`);
       });
 
       this.dispatcher.once('end', reason => {
-        this.playCard.delete();
-        this.buttons.src.delete();
-        this.buttons.src.channel.send(`Played: *${this.nowPlaying.title}*`);
+        this.pcMnger.deleteCards();
+        this.messageCache.channel.send(`Played: *${this.nowPlaying.title}*`);
         this.dispatcher = null;
-        this.playCard = null;
-        this.buttons = null;
         this.nowPlaying = null;
         if (reason !== "user" && this.list.length > 0) {
           console.log("Creating next stream");
           return this.createStream(this.messageCache);
         }
+        this.pcMnger.setPlaying(null);
         this.client.user.setGame(null);
         this.child.send({ type : 'stop' });
         this.messageCache.reply(`Music stream ended`);
@@ -217,11 +190,9 @@ class QueuePlayer {
     else if (this.dispatcher.paused) return 'I am already paused!';
     this.dispatcher.pause();
     if (!_.isNil(message)) message.delete();
-    this.buttons.src.delete();
-    this.playCard.delete();
-    this.playCard = yield this.playCard.channel.sendEmbed(createEmbed(this.nowPlaying, true, this.peek()));
-    this.buttons = yield addButtons(this.playCard, true, false, this.list.length, false);
-    this.child.send({ type : "update", chanID : this.playCard.channel.id, msgID : this.playCard.id });
+    this.pcMnger.setPaused(true);
+    const updateMsg = yield this.pcMnger.updateCards();
+    if (!_.isNil(updateMsg)) this.child.send(updateMsg);
     return false;
   }
 
@@ -231,11 +202,9 @@ class QueuePlayer {
     else if (!this.dispatcher.paused) return 'I have already started playing!';
     this.dispatcher.resume();
     if (!_.isNil(message)) message.delete();
-    this.buttons.src.delete();
-    this.playCard.delete();
-    this.playCard = yield this.playCard.channel.sendEmbed(createEmbed(this.nowPlaying, false, this.peek()));
-    this.buttons = yield addButtons(this.playCard, true, false, this.list.length, true);
-    this.child.send({ type : "update", chanID : this.buttons.src.channel.id, msgID : this.buttons.src.id });
+    this.pcMnger.setPaused(false);
+    const updateMsg = yield this.pcMnger.updateCards();
+    if (!_.isNil(updateMsg)) this.child.send(updateMsg);
     return false;
   }
 
@@ -259,61 +228,6 @@ class QueuePlayer {
     if (!_.isNil(message)) yield message.react('😢');
     return false;
   }
-}
-
-// Create the embed for player card message
-function createEmbed(playing, paused, next) {
-  const embed = {
-    title : `**${playing.title}**`,
-    description : `**${playing.poster}**`,
-    color : playing.src === "sc" ? 0xff7700 : 0xbb0000,
-    image : { url : playing.pic },
-    thumbnail : {
-      url : playing.src === "sc" ? 'https://www.drupal.org/files/project-images/soundcloud-logo.png' :
-            'https://img.clipartfest.com/93cb13327aaaf52d1e975992b7fced5f_download-this-image-as-youtube-play-clipart_600-421.png'
-    },
-    author : {
-      name : paused ? "Paused" : "Now Playing",
-      icon_url : paused ? 'http://icons.iconarchive.com/icons/graphicloads/100-flat/128/pause-icon.png' :
-                  'https://maxcdn.icons8.com/Share/icon/Media_Controls//circled_play1600.png'
-    }
-  }
-  if (!_.isNil(next)) {
-    embed.footer = {
-      text : `Up next: ${next.title}`,
-      icon_url : next.pic
-    }
-  }
-  return embed;
-}
-
-
-// Adds emoji reactions to a message
-function* addButtons(message, isPlaying, showShuffle, showEject, showPause) {
-  if (showEject) yield message.react(showShuffle ? '🔀' : '⏏');
-  if (!isPlaying) return { src : message, isShuffle : showShuffle };
-  yield timeoutPromise(150);
-  yield message.react(showPause ? '⏸' : '▶');
-  yield timeoutPromise(150);
-  yield message.react('⏭');
-  yield timeoutPromise(150);
-  yield message.react('⏹');
-  return { src : message, isShuffle: showShuffle };
-}
-
-// So I only have to format this once.
-function playMsg(nowPlaying, paused) {
-  let msg = paused ? 'Paused: ' : 'Now playing: ';
-  msg += `**${nowPlaying.title}** posted by **${nowPlaying.poster}**`;
-  return msg;
-}
-
-function timeoutPromise(time) {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      resolve(true);
-    }, time);
-  });
 }
 
 module.exports = QueuePlayer;
