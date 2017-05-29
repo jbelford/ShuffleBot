@@ -58,9 +58,6 @@ client.on('message', wrap( function* (message) {
   } catch (e) {
     message.reply(`I failed to do that request: ${e}`);
     console.log(e.stack);
-    _.forEach(admins, id => {
-      client.users.get(id).sendCode(`Error caught:\n${e.stack}`);
-    });
   }
 }));
 

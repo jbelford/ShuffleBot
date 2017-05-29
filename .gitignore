@@ -4,3 +4,5 @@ node_modules/
 TODO.txt
 config/channels.json
 config/misc.json
+libs/ButtonListener.js
+libs/Misc.js

@@ -3,9 +3,7 @@ const _              = require('lodash');
 const request        = require('request');
 const ytdl           = require('ytdl-core');
 const co             = require('co');
-const fork           = require('child_process').fork;
-const timeoutPromise = require('./Misc.js').timeoutPromise;
-const PlayCardManager = require('./PlayCard.js');
+const PlayCardManager = require('./PlayCardManager.js');
 
 class QueuePlayer {
   constructor(client, SC, YT) {
@@ -23,10 +21,7 @@ class QueuePlayer {
     this.messageCache = null;
 
     this.pcMnger = new PlayCardManager();
-
-    this.child = fork(`./libs/ButtonListener.js`, ['--debug-brk=6001']);
-
-    this.child.on('message', (data) => {
+    this.pcMnger.on('reaction', emoji => {
       co.wrap(function* (qp, emoji) {
         if (emoji === '🔀') yield qp.shuffle();
         else if (emoji === '⏏' && qp.list.length) yield qp.show(10, qp.messageCache);
@@ -34,10 +29,8 @@ class QueuePlayer {
         else if (emoji === '▶') yield qp.resumeStream();
         else if (emoji === '⏭') yield qp.skipSong();
         else if (emoji === '⏹') yield qp.stopStream();
-      })(this, data.emoji);
-    });
-
-    this.child.send({ type : "start", token : this.client.token });
+      })(this, emoji);
+    })
   }
 
   *enqueue(items, top) {
@@ -48,8 +41,7 @@ class QueuePlayer {
       next : this.peek(), 
       queue : { total : this.list.length, num : numItems, list : this.list.slice(0, numItems) } 
     });
-    const updateMsg = yield this.pcMnger.updateCards();
-    if (!_.isNil(updateMsg)) this.child.send(updateMsg);
+    yield this.pcMnger.updateCards();
   }
 
   dequeue() {
@@ -64,8 +56,7 @@ class QueuePlayer {
     message.delete();
     this.list = [];
     this.pcMnger.setVarious({ next: null, queue: null })
-    const updateMsg = yield this.pcMnger.updateCards();
-    if (!_.isNil(updateMsg)) this.child.send(updateMsg);
+    yield this.pcMnger.updateCards();
     return 'I have cleared the queue';
   }
 
@@ -87,8 +78,7 @@ class QueuePlayer {
     const items = this.pcMnger.queue;
     items.list = this.list.slice(0, items.num);
     this.pcMnger.setVarious({ next : this.peek(), queue : items });
-    const updateMsg = yield this.pcMnger.updateCards();
-    if (!_.isNil(updateMsg)) this.child.send(updateMsg);
+    yield this.pcMnger.updateCards();
     return 'Successfully shuffled the queue!';
   }
 
@@ -97,8 +87,7 @@ class QueuePlayer {
     if (this.list.length === 0) return 'There is nothing in the queue!';
     else if (this.list.length < numItems) numItems = this.list.length;
     this.pcMnger.setQueue({ total: this.list.length, num: numItems, list: this.list.slice(0, numItems) });
-    const updateMsg = yield this.pcMnger.newQueueCard(message.channel);
-    this.child.send(updateMsg);
+    yield this.pcMnger.newQueueCard(message.channel);
     if (!message.author.bot) this.messageCache = message;
     return false;
   }
@@ -148,36 +137,31 @@ class QueuePlayer {
     return new Promise((resolve, reject) => {
       if (_.isNil(this.connection)) return resolve(false);
       this.dispatcher = this.connection.playStream(this.getNextStream(), { seek: 0, volume: this.volume, passes: 1 });
-
-      this.dispatcher.once('start', () => {
+      
+      this.dispatcher.on('start', () => {
         this.nowPlaying = this.dequeue();
         this.pcMnger.setVarious({ playing : this.nowPlaying, next: this.peek() })
+        this.client.user.setGame(this.nowPlaying.title);
         co.wrap( function* (qp) {
-          yield qp.client.user.setGame(qp.nowPlaying.title);
-          const msg = yield qp.pcMnger.newSongCard(qp.messageCache.channel, true);
-          qp.child.send(msg);
+          yield qp.pcMnger.newSongCard(qp.messageCache.channel, true);
         })(this)
         console.log(`Streaming: ${this.nowPlaying.title}`);
       });
 
+      // #TODO ~ Remove timeout when discord.js library fixes double 'end' emit
       this.dispatcher.once('end', reason => {
+        this.dispatcher = null;
         this.pcMnger.deleteCards();
         this.messageCache.channel.send(`Played: *${this.nowPlaying.title}*`);
-        this.dispatcher = null;
-        this.nowPlaying = null;
         if (reason !== "user" && this.list.length > 0) {
           console.log("Creating next stream");
-          return this.createStream(this.messageCache);
+          setTimeout(() => { this.createStream(this.messageCache); }, 50);
+          return;
         }
         this.pcMnger.setPlaying(null);
         this.client.user.setGame(null);
-        this.child.send({ type : 'stop' });
         this.messageCache.reply(`Music stream ended`);
         console.log("Ended music stream");
-      });
-
-      this.dispatcher.once('error', err => {
-        console.log(err);
       });
       
       resolve('Music stream started');
@@ -191,8 +175,7 @@ class QueuePlayer {
     this.dispatcher.pause();
     if (!_.isNil(message)) message.delete();
     this.pcMnger.setPaused(true);
-    const updateMsg = yield this.pcMnger.updateCards();
-    if (!_.isNil(updateMsg)) this.child.send(updateMsg);
+    yield this.pcMnger.updateCards();
     return false;
   }
 
@@ -203,8 +186,7 @@ class QueuePlayer {
     this.dispatcher.resume();
     if (!_.isNil(message)) message.delete();
     this.pcMnger.setPaused(false);
-    const updateMsg = yield this.pcMnger.updateCards();
-    if (!_.isNil(updateMsg)) this.child.send(updateMsg);
+    yield this.pcMnger.updateCards();
     return false;
   }
 
