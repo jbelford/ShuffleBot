@@ -29,7 +29,7 @@ client.once('ready', wrap( function* () {
     db = yield db.connect(config.dbUrl);
     player = new QueuePlayer(client, SC, YT);
     console.log('Bot is ready!');
-    if (client.guilds.size === 0 || process.argv.indexOf('-gi') >= 0) {
+    if (client.guilds.size === 0 || process.argv.includes('-gi')) {
       const link = yield client.generateInvite(config.botPerms);
       console.log(`Bot invite link: ${link}`);
     }
@@ -307,14 +307,14 @@ function* searchYT(searchTerms, next) {
 
 // A function for shutting down the bot should the admin-only reset command be read
 const reset = function* (message, content) {
-  if (admins.indexOf(message.author.id) < 0) return 'You do not have permission to use this command!';
+  if (!admins.includes(message.author.id)) return 'You do not have permission to use this command!';
   yield message.reply('Shutting down...');
   process.exit(1);
 }
 
 // A function for my own personal entertainment..
 const runScript = function* (message, content) {
-  if (admins.indexOf(message.author.id) < 0) return 'You do not have permission to use this command!';
+  if (!admins.includes(message.author.id)) return 'You do not have permission to use this command!';
   const codeSnippet = content.slice(1).join(' ');
   try {
     eval(codeSnippet);

@@ -31,6 +31,7 @@ class PlayCard extends EventEmitter {
     return this.buttons;
   }
 
+  // Send the card to the channel
   *sendCard(channel, buttons) {
     this.src = yield channel.send({ embed : this.embed });
     if (buttons) yield this.addButtons();
@@ -58,6 +59,7 @@ class PlayCard extends EventEmitter {
     this.collector.stop();
   }
 
+  // Create a collector to listen for reactions to the message
   createCollector() {
     this.collector = this.src.createReactionCollector((reaction, user) => {
       return validReactions.includes(reaction.emoji.name) && !user.bot;

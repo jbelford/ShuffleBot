@@ -53,7 +53,6 @@ class QueuePlayer {
   }
 
   *clear(message) {
-    message.delete();
     this.list = [];
     this.pcMnger.setVarious({ next: null, queue: null })
     yield this.pcMnger.updateCards();
@@ -173,7 +172,6 @@ class QueuePlayer {
     if (_.isNil(this.dispatcher)) return 'I am not playing anything!';
     else if (this.dispatcher.paused) return 'I am already paused!';
     this.dispatcher.pause();
-    if (!_.isNil(message)) message.delete();
     this.pcMnger.setPaused(true);
     yield this.pcMnger.updateCards();
     return false;
@@ -184,7 +182,6 @@ class QueuePlayer {
     if (_.isNil(this.dispatcher)) return 'There is nothing to resume!';
     else if (!this.dispatcher.paused) return 'I have already started playing!';
     this.dispatcher.resume();
-    if (!_.isNil(message)) message.delete();
     this.pcMnger.setPaused(false);
     yield this.pcMnger.updateCards();
     return false;
