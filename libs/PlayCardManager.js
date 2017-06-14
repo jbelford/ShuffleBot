@@ -84,8 +84,9 @@ class PlayCardManager extends EventEmitter {
 
   // Call this when properties have been changed
   *updateCards() {
-    if (this.queueCard && this.queue) {
-      yield this.newQueueCard(this.queueCard.channel);
+    if (this.queueCard ) {
+      if (this.queue) yield this.newQueueCard(this.queueCard.channel);
+      else this.deleteCards();
     } else if (this.songCard) {
       yield this.newSongCard(this.songCard.channel, true);
     }
@@ -103,13 +104,17 @@ class PlayCardManager extends EventEmitter {
   // Create a message collector to remove messages while playing
   createCollector(channel) {
     this.collector = new MessageCollector(channel, message => {
-      let check = message.id !== this.songCard.msgID;
+      let check = false;
+      if (this.songCard) check = message.id !== this.songCard.msgID;
       if (this.queueCard) check = check && message.id !== this.queueCard.msgID;
       return check;
     });
     this.collector.on('collect', message => {
       setTimeout(() => { message.delete(); }, 2000);
     });
+    this.collector.on('end', () => {
+      this.collector = null;
+    })
   }
 
 }

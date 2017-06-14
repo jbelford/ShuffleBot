@@ -17,10 +17,10 @@ class PlayCard extends EventEmitter {
   }
 
   get chanID() {
-    return this.src.channel.id;
+    return this.src ? this.src.channel.id : null;
   }
   get msgID() {
-    return this.src.id;
+    return this.src ? this.src.id : null;
   }
 
   get channel() {
