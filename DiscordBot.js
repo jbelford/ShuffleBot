@@ -16,7 +16,7 @@ const config = JSON.parse(fs.readFileSync('./config/misc.json', 'utf8'));
 const token  = config.tokens.discord;
 const SC     = config.tokens.soundcloud;
 const YT     = config.tokens.youtube;
-const cmdTok = '!';
+const cmdTok = '$';
 
 const validChans = JSON.parse(fs.readFileSync('./config/channels.json', 'utf8'));
 const commands   = JSON.parse(fs.readFileSync('./config/commands.json', 'utf8'));
