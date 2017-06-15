@@ -12,6 +12,7 @@
             "KEY" : ""
         }
     },
+    "commandToken" : "$",
     "botPerms": [
         "ADMINISTRATOR",
         "ADD_REACTIONS",
