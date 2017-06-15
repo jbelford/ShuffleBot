@@ -84,8 +84,9 @@ class PlayCardManager extends EventEmitter {
 
   // Call this when properties have been changed
   *updateCards() {
-    if (this.queueCard ) {
+    if (this.queueCard) {
       if (this.queue) yield this.newQueueCard(this.queueCard.channel);
+      else if (this.songCard) yield this.newSongCard(this.songCard.channel, true);
       else this.deleteCards();
     } else if (this.songCard) {
       yield this.newSongCard(this.songCard.channel, true);
