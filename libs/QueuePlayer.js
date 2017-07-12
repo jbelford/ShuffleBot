@@ -1,9 +1,10 @@
 "use strict"
-const _              = require('lodash');
-const request        = require('request');
-const ytdl           = require('ytdl-core');
-const co             = require('co');
-const PlayCardManager = require('./PlayCardManager.js');
+const _               = require('lodash');
+const request         = require('request');
+const ytdl            = require('ytdl-core');
+const co              = require('co');
+const PlayCardManager = require('./PlayCardManager');
+const Utils           = require('./Utils');
 
 class QueuePlayer {
   constructor(client, SC, YT) {
@@ -52,33 +53,19 @@ class QueuePlayer {
     return this.list.length > 0 ? this.list[0] : null;
   }
 
-  *clear(message) {
+  *clear() {
     this.list = [];
     this.pcMnger.setVarious({ next: null, queue: null })
     yield this.pcMnger.updateCards();
-    return 'I have cleared the queue';
-  }
-
-  remove(begin, num) {
-    this.list.splice(begin, num);
   }
 
   // Shuffles the queue or an input list
-  *shuffle(message, content, list) {
-    const copy = list ? list : this.list;
-    for (let i = 0; i < copy.length; i++) {
-      const rand = Math.floor(Math.random() * copy.length);
-      const temp = copy[rand];
-      copy[rand] = copy[i];
-      copy[i] = temp;
-    }
-    if (list) return copy;
-    this.list = copy;
+  *shuffle() {
+    this.list = Utils.shuffleList(this.list);
     const items = this.pcMnger.queue;
     items.list = this.list.slice(0, items.num);
     this.pcMnger.setVarious({ next : this.peek(), queue : items });
     yield this.pcMnger.updateCards();
-    return 'Successfully shuffled the queue!';
   }
 
   // Prints the queue
@@ -91,16 +78,30 @@ class QueuePlayer {
     return false;
   }
 
+  getVolume() {
+    return this.volume * 100;
+  }
+  
   // Shows the volume or takes in new volume
-  *changeVolume(message, content) {
-    if (content.length < 2) return `Current volume: \`${this.volume * 100}%\``;
-    const newVol = parseInt(content[1]) || -1;
-    if (newVol < 0 || newVol > 100) return 'Invalid volume! Choose a number between 0-100%'
+  changeVolume(newVol) {
+    if (newVol < 0 || newVol > 100)
+      return 'Invalid volume! Choose a number between 0-100%'
     this.volume = newVol / 100;
     if (!_.isNil(this.dispatcher)) this.dispatcher.setVolume(this.volume);
     return `The volume is now \`${newVol}%\``;
   }
 
+  isStreaming() {
+    return !_.isNil(this.dispatcher);
+  }
+
+  isPaused() {
+    return _.isNil(this.dispatcher) ? false : this.dispatcher.paused;
+  }
+
+  isInVoiceChannel() {
+    return !_.isNil(this.voice) && !_.isNil(this.connection);
+  }
   // Returns a readable stream for the song
   getNextStream() {
     if (this.list[0].src === 'sc') return request(`${this.list[0].stream_url}?client_id=${this.SC.CLIENT_ID}`);
@@ -108,31 +109,25 @@ class QueuePlayer {
   }
 
   // Joins the voice channel of the user
-  *joinVoice(message, content) {
-    if (_.isNil(message.member.voiceChannelID)) return 'You need to join a voice channel first!';
-    else if (!_.isNil(this.connection) && this.connection.channel.id === message.member.voiceChannelID) return `I'm already there!`;
-    this.voice = this.client.channels.get(message.member.voiceChannelID);
+  *joinVoice(voiceChannelID) {
+    if (!_.isNil(this.connection) && this.connection.channel.id === voiceChannelID) 
+      return 'I am already there!';
+    this.voice = this.client.channels.get(voiceChannelID);
     this.connection = yield this.voice.join();
-    yield message.react('👏');
-    return false;
   }
 
-  // First ensures that bot is joined to voice channel then starts music stream
-  *playStream(message, content) {
+  // Checks if in voice channel & creates the first stream
+  *playStream(message) {
     if (this.list.length === 0) return 'There is nothing in the queue!';
-    else if (!_.isNil(this.dispatcher)) return 'I am already streaming!';
-    else if (_.isNil(this.voice) || _.isNil(this.connection)) {
-      const resp = yield this.joinVoice(message, content);
-      if (resp) return resp;
-    }
-    const reply = yield this.createStream(message, content);
+    else if (this.isStreaming()) return 'I am already streaming!';
+    else if (!this.isInVoiceChannel()) return false;
+    this.messageCache = message;
     message.react('🤘');
-    return reply;
+    return yield this.createStream();
   }
 
   // Creates the stream and defines the dispatcher
-  createStream(message, content) {
-    this.messageCache = message;
+  createStream() {
     return new Promise((resolve, reject) => {
       if (_.isNil(this.connection)) return resolve(false);
       this.dispatcher = this.connection.playStream(this.getNextStream(), { seek: 0, volume: this.volume, passes: 1 });
@@ -168,44 +163,38 @@ class QueuePlayer {
   }
 
   // Pause the stream
-  *pauseStream(message, content) {
-    if (_.isNil(this.dispatcher)) return 'I am not playing anything!';
-    else if (this.dispatcher.paused) return 'I am already paused!';
+  *pauseStream() {
+    if (!this.isStreaming()) return 'I am not playing anything!';
+    else if (this.isPaused()) return 'I am already paused!';
     this.dispatcher.pause();
     this.pcMnger.setPaused(true);
     yield this.pcMnger.updateCards();
-    return false;
   }
 
   // Resume the stream
-  *resumeStream(message, content) {
-    if (_.isNil(this.dispatcher)) return 'There is nothing to resume!';
-    else if (!this.dispatcher.paused) return 'I have already started playing!';
+  *resumeStream() {
+    if (!this.isStreaming()) return 'There is nothing to resume!';
+    else if (!this.isPaused()) return 'I have already started playing!';
     this.dispatcher.resume();
     this.pcMnger.setPaused(false);
     yield this.pcMnger.updateCards();
-    return false;
   }
 
   // Skip the current song
-  *skipSong(message, content) {
-    if (_.isNil(this.dispatcher)) {
+  skipSong() {
+    if (!this.isStreaming()) {
       this.dequeue();
-      return "I have skipped the next song!";
+      return 'I have skipped the next song!';
     }
-    if (!_.isNil(message)) yield message.react('👌');
     this.dispatcher.end("stream");
-    return false;
   }
 
   // Stops the music stream
-  *stopStream(message, content) {
-    if (_.isNil(this.connection)) return 'I am not connected to a voice channel!';
-    if (!_.isNil(this.dispatcher)) this.dispatcher.end('user');
+  stopStream() {
+    if (!this.isInVoiceChannel()) return 'I am not connected to a voice channel!';
+    if (this.isStreaming()) this.dispatcher.end('user');
     this.connection.disconnect(); this.voice.leave();
     this.dispatcher = null; this.connection = null; this.voice = null;
-    if (!_.isNil(message)) yield message.react('😢');
-    return false;
   }
 }
 

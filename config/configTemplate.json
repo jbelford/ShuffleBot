@@ -12,6 +12,15 @@
             "KEY" : ""
         }
     },
+    "channels" : [""],
+    "filter" : {
+        "exclude" : [""],
+        "spam" : { 
+            "limit" : 7,
+            "period" : 10 
+        },
+        "allegedly" : 0.02
+    },
     "commandToken" : "$",
     "botPerms": [
         "ADMINISTRATOR",

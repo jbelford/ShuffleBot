@@ -105,7 +105,7 @@ class PlayCardManager extends EventEmitter {
   // Create a message collector to remove messages while playing
   createCollector(channel) {
     this.collector = new MessageCollector(channel, message => {
-      let check = false;
+      let check = true;
       if (this.songCard) check = message.id !== this.songCard.msgID;
       if (this.queueCard) check = check && message.id !== this.queueCard.msgID;
       return check;
@@ -134,7 +134,7 @@ function createSongEmbed(playing, paused, next) {
     author : {
       name : paused ? "Paused" : "Now Playing",
       icon_url : paused ? 'http://icons.iconarchive.com/icons/graphicloads/100-flat/128/pause-icon.png' :
-                  'https://maxcdn.icons8.com/Share/icon/Media_Controls//circled_play1600.png'
+                  'http://wearabletechnologysmartwatches.space/Videos/wp-content/uploads/2015/12/favicon.png'
     }
   }
   if (next) {

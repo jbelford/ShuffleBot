@@ -1,26 +1,28 @@
 "use strict"
 
-const _           = require('lodash');
-const fs          = require('fs');
-const nodeCleanup = require('node-cleanup');
-const wrap        = require('co-express');
-const request     = require('co-request');
-const QueuePlayer = require('./libs/QueuePlayer');
-const querystring = require('querystring');
-let db            = require('mongodb').MongoClient;
+const _             = require('lodash');
+const fs            = require('fs');
+const nodeCleanup   = require('node-cleanup');
+const wrap          = require('co-express');
+const request       = require('co-request');
+const QueuePlayer   = require('./libs/QueuePlayer');
+const Utils         = require('./libs/Utils');
+const MessageFilter = require('./libs/MessageFilter');
+const querystring   = require('querystring');
+let db              = require('mongodb').MongoClient;
 
 const Discord = require('discord.js');
 const client  = new Discord.Client();
 
-const config = JSON.parse(fs.readFileSync('./config/misc.json', 'utf8'));
-const token  = config.tokens.discord;
-const SC     = config.tokens.soundcloud;
-const YT     = config.tokens.youtube;
-const cmdTok = config.commandToken;
-
-const validChans = JSON.parse(fs.readFileSync('./config/channels.json', 'utf8'));
 const commands   = JSON.parse(fs.readFileSync('./config/commands.json', 'utf8'));
+const config     = JSON.parse(fs.readFileSync('./config/config.json', 'utf8'));
+const token      = config.tokens.discord;
+const SC         = config.tokens.soundcloud;
+const YT         = config.tokens.youtube;
+const cmdTok     = config.commandToken;
+const validChans = config.channels;
 const admins     = config.admins;
+const msgFilter  = new MessageFilter(config.filter);
 let player;
 
 // Listens for response from Discord
@@ -43,17 +45,17 @@ client.once('ready', wrap( function* () {
 // Listens for message from a channel
 client.on('message', wrap( function* (message) {
   try {
-    if (_.isNil(validChans[message.channel.id]) || message.author.bot) return;
+    if (message.author.bot) return;
     const content = message.content.trim().split(/\s+/g);
-    if (content[0].charAt(0) !== cmdTok) return;
+    if (content[0].charAt(0) !== cmdTok || !validChans.includes(message.channel.id)) {
+      return msgFilter.filterMessage(message);
+    }
     const cmd = content[0].substr(1);
     if (_.isNil(commands[cmd])) {
       return message.reply(`Command not recognized! Use ${cmdTok}help to see list of commands.`);
     }
     console.log(`Processing command: ${cmd}`);
-    let resp;
-    if (commands[cmd].obj === "queue") resp = yield player[commands[cmd].func](message, content);
-    else resp = yield eval(commands[cmd].func)(message, content);
+    const resp = yield eval(commands[cmd].func)(message, content);
     if (resp) message.reply(resp);
   } catch (e) {
     message.reply(`I failed to do that request: ${e}`);
@@ -88,10 +90,6 @@ const download = function* (message, content) {
   const user = content[1];
   const resp = yield request(`${SC.API}/resolve?url=http://soundcloud.com/${user}&client_id=${SC.CLIENT_ID}`);
   if (resp.statusCode !== 200) return "Failed to find that user's info!";
-  const userDB = yield db.collection('users').findOneAndDelete({ permalink : user });
-  if (!_.isNil(userDB.value)) {
-    yield message.channel.send('Removed previous user info...');
-  }
   const user_info = JSON.parse(resp.body);
   const newUser = {
     "permalink": user_info.permalink,
@@ -134,8 +132,7 @@ const getFavorites = function* (user, message) {
   user.list = temp;
   const doc = yield db.collection('users').updateOne({ permalink : user.permalink }, { $set : user }, { upsert : true });
   yield progress.edit('Downloading favorites: 100%');
-  return `Finished downloading music list for the profile: ${user.username}\n` +
-    `${total - user.list.length} of the songs are private and were not downloaded.`;
+  return `Finished ${doc.matchedCount ? "updating" : "downloading"} music list for the profile: ${user.username}`;
 }
 
 // Lists the users in the database
@@ -150,9 +147,72 @@ const list = function* (message, content) {
   return false;
 }
 
-// Show the queue
+// Show the queue command
 const showQueue = function* (message, content) {
   return yield player.show(10, message);
+}
+
+// Clear the queue command
+const clearQueue = function* (message, content) {
+  yield player.clear();
+  return 'I have cleared the queue';
+}
+
+// Shuffle the queue command
+const shuffleQueue = function* (message, content) {
+  yield player.shuffle();
+  return 'Successfully shuffled the queue!';
+}
+
+// Get / change the volume command
+const updateVolume = function* (message, content) {
+  if (content.length < 2) {
+    return `Current volume: \`${player.getVolume()}%\``;
+  }
+  return player.changeVolume(parseInt(content[1]) || -1);
+}
+
+// Join the users voice channel command
+const joinVoice = function* (message, content) {
+  if (_.isNil(message.member.voiceChannelID))
+    return 'You need to join a voice channel first!';
+  const success = yield player.joinVoice(message.member.voiceChannelID);
+  yield message.react('👏');
+  return success;
+}
+
+// Begin playing music command
+const playStream = function* (message, content) {
+  let success = yield player.playStream(message);
+  if (!success) {
+    const resp = yield joinVoice(message, content);
+    if (resp) return resp;
+    success = yield player.playStream(message);
+  }
+  return success;
+}
+
+// Pause the stream command
+const pauseStream = function* (message, content) {
+  return yield player.pauseStream();
+}
+
+// Resume the stream command
+const resumeStream = function* (message, content) {
+  return yield player.resumeStream();
+}
+
+// Skip the current song command
+const skipSong = function* (message, content) {
+  yield message.react('👌');
+  return player.skipSong();
+}
+
+// Stop the stream & leave voice command
+const stopStream = function* (message, content) {
+  const resp = player.stopStream();
+  yield message.react('😢');
+  return resp;
 }
 
 // This function gets called when the add command is received
@@ -165,10 +225,11 @@ const addSong = function* (message, content) {
   collected = collected.concat(yield getYTList(parsed.yt, message));
   collected = collected.concat(yield getSCList(parsed.sc, message));
   if (collected.length === 0) return 'Ultimately... there was nothing to add';
-  if (parsed.shuffle) collected = yield player.shuffle(null, null, collected);
+  if (parsed.shuffle) collected = yield Utils.shuffleList(collected);
   yield player.enqueue(collected, parsed.next);
   return `Successfully added songs to the queue!`
 }
+
 
 // Parses the arguments for updating the queue
 function parse(args) {

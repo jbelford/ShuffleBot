@@ -1,7 +1,5 @@
 node_modules/
 .vscode/
 .eslintrc.json
-config/channels.json
-config/misc.json
+config/config.json
 libs/ButtonListener.js
-libs/Misc.js

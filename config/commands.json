@@ -1,28 +1,24 @@
 {
     "help" : {
         "func" : "help",
-        "detail" : [" ~ Shows the list of all available commands and their details."],
-        "obj" : ""
+        "detail" : [" ~ Shows the list of all available commands and their details."]
     },
     "download" : {
         "func" : "download",
         "detail" : [
           " <user_permalink> ~ Downloads a user's favorites from SoundCloud (Overwrites any previous)\n",
           "\t<user_permalink> ~ Found in the URL for a soundcloud user: https://soundcloud.com/THIS_VALUE"
-        ],
-        "obj" : ""
+        ]
     },
     "list" : {
         "func" : "list",
-        "detail" : [" ~ Shows the list of users whose Soundcloud favorites are in the database"],
-        "obj" : ""
+        "detail" : [" ~ Shows the list of users whose Soundcloud favorites are in the database"]
     },
     "queue" : {
         "func" : "showQueue",
         "detail" : [
           " ~ Shows the list of songs in the queue"
-        ],
-        "obj" : ""
+        ]
     },
     "add" : {
         "func" : "addSong",
@@ -42,65 +38,53 @@
           "\tOptional Flags:\n",
           "\t\t--shuffle ~ Shuffle the new list before adding to the queue\n",
           "\t\t--next ~ Add the items to the head of the queue"
-        ],
-        "obj" : ""
+        ]
     },
     "clear" : {
-        "func" : "clear",
-        "detail" : [" ~ Clear the queue"],
-        "obj" : "queue"
+        "func" : "clearQueue",
+        "detail" : [" ~ Clear the queue"]
     },
     "shuffle" : {
         "func" : "shuffle",
-        "detail" : [" ~ Shuffle queue"],
-        "obj" : "queue"
+        "detail" : [" ~ Shuffle queue"]
     },
     "volume" : {
-        "func" : "changeVolume",
+        "func" : "updateVolume",
         "detail" : [
           " {<newVolume>} ~ Shows current volume % or makes volume equal to <newVolume>\n",
           "\t<newVolume> ~ An integer number between 0 and 100"
-        ],
-        "obj" : "queue"
+        ]
     },
     "join" : {
         "func" : "joinVoice",
-        "detail" : [" ~ Makes bot join the voice channel you are in"],
-        "obj" : "queue"
+        "detail" : [" ~ Makes bot join the voice channel you are in"]
     },
     "play" : {
         "func" : "playStream",
-        "detail" : [" ~ Starts playing music from the queue (Bot must be in a voice channel)"],
-        "obj" : "queue"
+        "detail" : [" ~ Starts playing music from the queue (Bot must be in a voice channel)"]
     },
     "pause" : {
         "func" : "pauseStream",
-        "detail" : [" ~ Pause music stream"],
-        "obj" : "queue"
+        "detail" : [" ~ Pause music stream"]
     },
     "resume" : {
         "func" : "resumeStream",
-        "detail" : [" ~ Resume paused music stream"],
-        "obj" : "queue"
+        "detail" : [" ~ Resume paused music stream"]
     },
     "skip" : {
         "func" : "skipSong",
-        "detail" : [" ~ Skips the current song in the queue"],
-        "obj" : "queue"
+        "detail" : [" ~ Skips the current song in the queue"]
     },
     "stop" : {
         "func" : "stopStream",
-        "detail" : [" ~ Stops playing music and leaves voice channel"],
-        "obj" : "queue"
+        "detail" : [" ~ Stops playing music and leaves voice channel"]
     },
     "reset" : {
         "func" : "reset",
-        "detail" : [" ~ Tells the bot to shut down. Forever.js shall restart the app. ADMIN ONLY"],
-        "obj" : ""
+        "detail" : [" ~ Tells the bot to shut down. Forever.js shall restart the app. ADMIN ONLY"]
     },
     "eval" : {
         "func" : "runScript",
-        "detail" : [" ~ Allows execution of JavaScript code. ADMIN ONLY."],
-        "obj" : ""
+        "detail" : [" ~ Allows execution of JavaScript code. ADMIN ONLY."]
     }
 }
