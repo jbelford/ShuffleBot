@@ -1,7 +1,7 @@
 # **Discord Music Bot**
 A bot for playing music in voice channels on Discord. 
 
-![alt-text](https://github.com/jbelford/DiscordMusicBot/raw/master/img/newExample.gif "Example image")
+![alt-text](https://github.com/jbelford/DiscordMusicBot/raw/master/img/mainExample.gif "Example image")
 
 ## General Features
 * Play queued songs in voice channels
@@ -20,7 +20,7 @@ A bot for playing music in voice channels on Discord.
 
 ## Store your SoundCloud favorites and queue them up whenever!
 
-![alt-text](https://github.com/jbelford/DiscordMusicBot/raw/master/img/downloadExample.gif "Example download")
+![alt-text](https://github.com/jbelford/DiscordMusicBot/raw/master/img/dlExample.gif "Example download")
 
 ## Requirements
 * MongoDB
