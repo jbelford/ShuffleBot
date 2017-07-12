@@ -146,6 +146,7 @@ class QueuePlayer {
       this.dispatcher.once('end', reason => {
         this.dispatcher = null;
         this.pcMnger.deleteCards();
+        this.pcMnger.setPaused(false);
         this.messageCache.channel.send(`Played: *${this.nowPlaying.title}*`);
         if (reason !== "user" && this.list.length > 0) {
           console.log("Creating next stream");
