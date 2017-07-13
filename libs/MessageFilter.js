@@ -1,7 +1,7 @@
 "use strict"
 
 const _ = require("lodash");
-const spammers = [];
+const spammers = {};
 
 
 class MessageFilter {
@@ -21,21 +21,21 @@ class MessageFilter {
 function resolveSpam(message, spamOptions) {
   const newTimestamp = Date.now();
   const authorID = message.author.id;
-  const spammer = spammers.find(spammer => spammer.id === authorID);
-  if (_.isNil(spammer)) {
-    const idx = spammers.length - 1;
-    setTimeout( () => {
-      spammers.splice(idx, 1);
-    }, spamOptions.period * 1000);
-    return spammers.push({ "id" : authorID, "count" : 1, "timestamp" : newTimestamp, "warned" : false });
+  const chanID = message.channel.id;
+  if (_.isNil(spammers[chanID])) {
+    spammers[chanID] = {};
   }
-  const idx = spammers.indexOf(spammer);
-  if (++spammers[idx].count > spamOptions.limit) {
-    message.delete();
-    if (!spammer.warned) {
-      message.reply(`You may only send ${spamOptions.limit} messages in a ${spamOptions.period} second interval`);
-      spammers[idx].warned = true;
-    }
+  if (_.isNil(spammers[chanID][authorID])) {
+    spammers[chanID][authorID] = { "count" : 1, "timestamp" : newTimestamp };
+    setTimeout( () => {
+      delete spammers[chanID][authorID];
+    }, spamOptions.period * 1000);
+  } else if (++spammers[chanID][authorID].count > spamOptions.limit) {
+    message.reply(`You may only send ${spamOptions.limit} messages in a ${spamOptions.period} second interval`);
+    message.channel.overwritePermissions(authorID, { "SEND_MESSAGES" : false });
+    setTimeout( () => {
+      message.channel.overwritePermissions(authorID, { "SEND_MESSAGES" : true });
+    }, spamOptions.period * 1000 + spammers[chanID][authorID].timestamp - newTimestamp);
   }
 }
 
