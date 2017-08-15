@@ -1,30 +1,15 @@
 {
-    "admins" : [""],
+    "owners" : [""],
     "dbUrl" : "mongodb://localhost:27017/discordbot",
     "tokens" : {
         "discord" : "",
-        "soundcloud" : {
-            "API"       : "https://api.soundcloud.com",
-            "CLIENT_ID" : ""
-        },
-        "youtube" : {
-            "API" : "https://www.googleapis.com/youtube/v3",
-            "KEY" : ""
-        }
-    },
-    "channels" : [""],
-    "filter" : {
-        "exclude" : [""],
-        "spam" : { 
-            "limit" : 7,
-            "period" : 10 
-        },
-        "allegedly" : 0.02
+        "soundcloud" : "",
+        "youtube" : ""
     },
     "commandToken" : "$",
     "botPerms": [
-        "ADMINISTRATOR",
         "ADD_REACTIONS",
+        "CHANGE_NICKNAME",
         "READ_MESSAGES",
         "SEND_MESSAGES",
         "SEND_TTS_MESSAGES",
@@ -33,8 +18,9 @@
         "READ_MESSAGE_HISTORY",
         "MENTION_EVERYONE",
         "CONNECT",
-        "SPEAK",
-        "MOVE_MEMBERS",
-        "USE_VAD"
+        "SPEAK"
+    ],
+    "disabledEvents": [
+        "TYPING_START"
     ]
 }

@@ -1,0 +1,25 @@
+{
+    "compilerOptions": {
+        "target" : "es2017",
+        "module" : "commonjs",
+        "moduleResolution": "node",
+        "sourceMap": true,
+        "allowJs": true,
+         "types": [
+            "node"
+         ],
+         "typeRoots": [
+            "node_modules/@types"
+         ],
+        "outDir": "build",
+        "rootDir": "src"
+    },
+    "include": [
+        "typings/index.d.ts",
+        "src/*.ts",
+        "src/**/*.ts"
+    ],
+    "exclude": [
+        "node_modules"
+    ]
+}

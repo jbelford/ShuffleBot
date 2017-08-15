@@ -1,20 +1,21 @@
 {
   "name": "discordbot",
-  "version": "0.2.1",
-  "description": "Integrates SoundCloud with discord",
-  "main": "DiscordBot.js",
+  "version": "0.5.0",
+  "description": "SoundCloud music bot for Discord",
+  "main": "build/app",
+  "types": "build/app",
   "dependencies": {
+    "@types/lodash": "^4.14.71",
+    "@types/mongodb": "^2.2.9",
+    "@types/request": "^2.0.0",
     "bufferutil": "^3.0.0",
     "co": "^4.6.0",
-    "co-express": "^1.2.2",
-    "co-request": "^1.0.0",
     "discord.js": "11.1.0",
     "erlpack": "github:hammerandchisel/erlpack",
     "ffmpeg-binaries": "^3.2.2-3",
     "libsodium-wrappers": "^0.5.1",
     "lodash": "^4.17.4",
     "mongodb": "^2.2.22",
-    "node-cleanup": "^2.1.2",
     "node-opus": "^0.2.6",
     "opusscript": "0.0.2",
     "request": "^2.79.0",
@@ -22,8 +23,16 @@
     "ytdl-core": "^0.14.0"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "tsc && node ./build/app.js"
   },
+  "engines": {
+    "node": ">=6.0.0"
+  },
+  "engineStrict": true,
   "author": "Jack Belford",
-  "license": "GPL-3.0+"
+  "license": "GPL-3.0+",
+  "devDependencies": {
+    "@types/node": "^8.0.19",
+    "typescript": "^2.4.2"
+  }
 }
