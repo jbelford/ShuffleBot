@@ -81,7 +81,7 @@ export class PlayerCards extends EventEmitter {
   }
 
   public updateCards() {
-    if (this.queueCard && this.showQueue) {
+    if (this.queueCard && this.showQ) {
       return this.newQueueCard(this.queueCard.channel);
     } else if (this.songCard) {
       return this.newSongCard(this.songCard.channel, true);

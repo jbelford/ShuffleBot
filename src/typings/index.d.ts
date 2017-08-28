@@ -1,7 +1,8 @@
 import { ObjectID } from 'mongodb';
-import { PermissionResolvable, WSEventType } from 'discord.js';
+import { PermissionResolvable, WSEventType, Emoji } from 'discord.js';
 import { SoundCloudUsers } from '../models/SoundCloudUsers';
 import { QueuePlayerManager } from '../models/QueuePlayerManager';
+import { PollManager } from '../models/PollManager';
 
 type Track = {
   title: string;
@@ -32,26 +33,36 @@ type BotConfig = {
   botPerms: PermissionResolvable[];
   disabledEvents: WSEventType[];
   commands: CommandsList;
+  emojis: string[];
 };
 
 type Command = {
-  args?: string;
-  detail: string[];
+  args?: {
+    text: string;
+    description: string[];
+  };
+  detail: string;
+  usage: string[];
+  level: number;
 }
 
-type CommandsList = {
-  admin: {
-    [key: string]: Command;
+type CommandModule = {
+  name: string;
+  prefix: string;
+  commands: {
+    [name: string]: Command
   };
-  everyone: {
-    [key: string]: Command;
-  };
-  owner: {
-    [key: string]: Command;
-  }
-};
+}
+
+type CommandsList = CommandModule[];
 
 type Daos = {
   soundCloudUsers: SoundCloudUsers;
   queuePlayerManager: QueuePlayerManager;
+  pollManager: PollManager
+};
+
+type PollOption = {
+  text: string;
+  emoji: string;
 };

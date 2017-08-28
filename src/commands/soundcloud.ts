@@ -2,25 +2,25 @@
 
 import * as co     from 'co';
 import * as _      from 'lodash';
-import * as Utils  from '../../libs/common/Utils';
-import * as Embeds from '../../libs/common/Embeds';
+import * as Utils  from '../libs/common/Utils';
+import * as Embeds from '../libs/common/Embeds';
 
-import { SoundCloudUsers }         from '../../models/SoundCloudUsers';
-import { DiscordBot }              from '../../libs/DiscordBot';
-import { BotConfig, Daos, SCUser } from '../../typings';
+import { SoundCloudUsers }         from '../models/SoundCloudUsers';
+import { DiscordBot }              from '../libs/DiscordBot';
+import { BotConfig, Daos, SCUser } from '../typings';
 import { Message }                 from 'discord.js';
 
 export function addSoundCloudCommands(bot: DiscordBot, config: BotConfig, daos: Daos) {
   const scUsers = daos.soundCloudUsers;
 
-  bot.on('list', co.wrap(function* (message: Message) {
+  bot.on('sc.list', co.wrap(function* (message: Message) {
     const users: SCUser[] = yield scUsers.listUsers(message.guild.id);
     if (users.length === 0) return message.reply("There are no known SoundCloud users for this server!");
     const embed = Embeds.soundCloudUsersEmbed(message.guild, users);
     message.channel.send({ embed: embed });
   }));
 
-  bot.on('download', co.wrap(function* (message: Message, params: string[]) {
+  bot.on('sc.add', co.wrap(function* (message: Message, params: string[]) {
     if (params.length === 0) 
       return message.reply('Missing parameters: <user_permalink>');
     
@@ -29,7 +29,7 @@ export function addSoundCloudCommands(bot: DiscordBot, config: BotConfig, daos: 
     const timestamp = Date.now();
 
     scUsers.once(`start ${timestamp}`, co.wrap(function* (user_info) {
-      yield message.reply(`Discovered profile of ${user_info.full_name}`);
+      yield message.reply(`Adding profile of ${user_info.full_name}`);
       progressMsg = yield message.channel.send(`Downloading favorites: 0%`);
     }));
 
@@ -43,7 +43,7 @@ export function addSoundCloudCommands(bot: DiscordBot, config: BotConfig, daos: 
       for (let i = 0; i < 10 && _.isNil(progressMsg); i++)
         yield Utils.sleep(20);
       if (!_.isNil(progressMsg)) yield progressMsg.edit(`Downloading favorites: 100%`);
-      yield message.reply(`Finished ${doc.matchedCount ? "updating" : "downloading"} music list for the profile: ${user_info.username}`);
+      yield message.reply(`Finished ${doc.matchedCount ? "updating" : "adding"} music list for the profile: ${user_info.username}`);
     }));
 
     const err: string = yield scUsers.addUser(params[0], timestamp, message.guild.id);

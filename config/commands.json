@@ -1,86 +1,202 @@
-{
-    "admin": {
-
-    },
-    "everyone": {
-        "help" : {
-            "detail" : ["Shows the list of all available commands and their details."]
-        },
-        "invite" : {
-            "detail" : ["Creates a link to invite the bot to another server."]
-        },
-        "download" : {
-            "args" : "<user_permalink>",
-            "detail" : [
-              "Downloads a user's favorites from SoundCloud (Overwrites any previous)\n",
-              "\t<user_permalink> ~ Found in the URL for a soundcloud user\n",
-              "\t\t(Ex: https://soundcloud.com/THIS_VALUE)"
-            ]
-        },
-        "list" : {
-            "detail" : ["Shows the list of users whose Soundcloud favorites are in the database"]
-        },
-        "queue" : {
-            "detail" : ["Shows the list of songs in the queue"]
-        },
-        "add" : {
-            "args" : "(<query> | <specific>)",
-            "detail" : [
-              "Adds items to the queue\n",
-              "\t<query> ~ Search terms for a song. Queues the first result from youtube.\n",
-              "\t<specific> = <user_data>+ &| <yt_url> &| <sc_url>\n",
-              "\t\t<user_data> = <user_permalink> <range>\n",
-              "\t\t\t<user_permalink> ~ Same as above\n",
-              "\t\t\t<range> ~ Specifies range of the user's music list to use. Valid syntax is below.\n",
-              "\t\t\t\t[X] ~ Means select the first X songs in the list (Most recent favorites)\n",
-              "\t\t\t\t[-X] ~ Means select the last X songs in the list (Least recent favorites)\n",
-              "\t\t\t\t[X,Y] ~ Select all songs from X to Y (X & Y can also be negative like above)\n",
-              "\t\t\t\t[ALL] ~ Select all songs in the list\n",
-              "\t\t<yt_url> ~ An url for a YouTube video or playlist\n",
-              "\t\t<sc_url> ~ An url for a SoundCloud video or playlist\n",
-              "\tOptional Flags:\n",
-              "\t\t--shuffle ~ Shuffle the new list before adding to the queue\n",
-              "\t\t--next ~ Add the items to the head of the queue"
-            ]
-        },
-        "clear" : {
-            "detail" : ["Clear the queue"]
-        },
-        "shuffle" : {
-            "detail" : ["Shuffle queue"]
-        },
-        "volume" : {
-            "args" : "{<newVolume>}",
-            "detail" : [
-              "Shows current volume % or makes volume equal to <newVolume>\n",
-              "\t<newVolume> ~ An integer number between 0 and 100"
-            ]
-        },
-        "join" : {
-            "detail" : ["Makes bot join the voice channel you are in"]
-        },
-        "play" : {
-            "detail" : ["Starts playing music from the queue (Bot must be in a voice channel)"]
-        },
-        "pause" : {
-            "detail" : ["Pause music stream"]
-        },
-        "resume" : {
-            "detail" : ["Resume paused music stream"]
-        },
-        "skip" : {
-            "detail" : ["Skips the current song in the queue"]
-        },
-        "stop" : {
-            "detail" : ["Stops playing music and leaves voice channel"]
+[
+    {
+        "name": "General",
+        "prefix": "",
+        "commands": {
+            "help": {
+                "args": {
+                    "text": "{<command> | <category> | <categoryNumber>}",
+                    "description": [
+                        "<command> ~ A name for a command. Specify this to see details for that command.\n",
+                        "<category> ~ The name or prefix for a category of commands.\n",
+                        "<categoryNumber> ~ The number for a category according to the list when you use help with no arguments"
+                    ]
+                },
+                "detail": "Shows the list of all available commands and their details.",
+                "usage": [
+                    "help",
+                    "help 1",
+                    "help General",
+                    "help poll",
+                    "help sc"
+                ],
+                "level": 1
+            },
+            "invite": {
+                "detail": "Creates a link to invite the bot to another server.",
+                "usage": [
+                    "invite"
+                ],
+                "level": 1
+            },
+            "poll": {
+                "args": {
+                    "text": "\"<question>\" [<choice>(;<choice>)+]",
+                    "description": [
+                        "<question> ~ The question for the poll\n",
+                        "<choice> ~ An option for the poll"
+                    ]
+                },
+                "detail": "Create a poll in the channel",
+                "usage": [
+                    "poll \"Favorite color?\" [Red; Green; Blue]"
+                ],
+                "level": 1
+            },
+            "reset": {
+                "detail": "Tells the bot to shut down.",
+                "level": 3
+            },
+            "eval": {
+                "detail": "Allows execution of JavaScript code.",
+                "level": 3
+            }
         }
     },
-    "owner" :{
-        "reset" : {
-            "detail" : ["Tells the bot to shut down."]
-        },
-        "eval" : {
-            "detail" : ["Allows execution of JavaScript code."]
+    {
+        "name": "Music",
+        "prefix": "m",
+        "commands": {
+            "join": {
+                "detail": "Makes bot join the voice channel you are in",
+                "usage": [
+                    "join"
+                ],
+                "level": 1
+            },
+            "play": {
+                "detail": "Start playing music from the queue",
+                "usage": [
+                    "play"
+                ],
+                "level": 1
+            },
+            "stop": {
+                "detail": "Stops playing music and leaves voice channel",
+                "usage": [
+                    "stop"
+                ],
+                "level": 1
+            },
+            "skip": {
+                "detail": "Skips the current song in the queue",
+                "usage": [
+                    "skip"
+                ],
+                "level": 1
+            },
+            "volume": {
+                "args": {
+                    "text": "{<newVolume>}",
+                    "description": [
+                        "<newVolume> ~ An integer number between 0 and 100"
+                    ]
+                },
+                "detail": "Shows current volume % or makes volume equal to <newVolume>",
+                "usage": [
+                    "volume",
+                    "volume 75"
+                ],
+                "level": 1
+            },
+            "pause": {
+                "detail": "Pause music stream",
+                "usage": [
+                    "pause"
+                ],
+                "level": 1
+            },
+            "resume": {
+                "detail": "Resume paused music stream",
+                "usage": [
+                    "resume"
+                ],
+                "level": 1
+            }
+        }
+    },
+    {
+        "name": "Queue",
+        "prefix": "q",
+        "commands": {
+            "show": {
+                "detail": "Shows the list of songs in the queue",
+                "usage": [
+                    "show"
+                ],
+                "level": 1
+            },
+            "add": {
+                "args": {
+                    "text": "(<query> | <specific>)",
+                    "description": [
+                        "<query> ~ Search terms for a song. Queues the first result from youtube.\n",
+                        "<specific> ~ <user_data>+ &| <yt_url> &| <sc_url>\n",
+                        "\t<user_data> ~ <user_permalink> <range>\n",
+                        "\t\t<user_permalink> ~ SoundCloud user permalink. (Checkout SoundCloud commands)\n",
+                        "\t\t<range> ~ Specifies range of the user's music list to use. Valid syntax is below.\n",
+                        "\t\t\t[X] ~ Means select the first X songs in the list (Most recent favorites)\n",
+                        "\t\t\t[-X] ~ Means select the last X songs in the list (Least recent favorites)\n",
+                        "\t\t\t[X,Y] ~ Select all songs from X to Y (X & Y can also be negative like above)\n",
+                        "\t\t\t[ALL] ~ Select all songs in the list\n",
+                        "\t<yt_url> ~ An url for a YouTube video or playlist\n",
+                        "\t<sc_url> ~ An url for a SoundCloud video or playlist\n",
+                        "Optional Flags:\n",
+                        "\t--shuffle ~ Shuffle the new list before adding to the queue\n",
+                        "\t--next ~ Add the items to the head of the queue"
+                    ]
+                },
+                "detail": "Add songs to the queue",
+                "usage": [
+                    "add what is love --next",
+                    "add jack-belford-1 [all] --shuffle",
+                    "add https://www.youtube.com/watch?v=HEXWRTEbj1I"
+                ],
+                "level": 1
+            },
+            "clear": {
+                "detail": "Clear the queue",
+                "usage": [
+                    "clear"
+                ],
+                "level": 1
+            },
+            "shuffle": {
+                "detail": [
+                    "Shuffle queue"
+                ],
+                "usage": [
+                    "shuffle"
+                ],
+                "level": 1
+            }
+        }
+    },
+    {
+        "name": "SoundCloud",
+        "prefix": "sc",
+        "commands": {
+            "add": {
+                "args": {
+                    "text": "<user_permalink>",
+                    "description": [
+                        "<user_permalink> ~ Found in the URL for a soundcloud user\n",
+                        "\t(Ex: https://soundcloud.com/THIS_VALUE)"
+                    ]
+                },
+                "detail": "Adds a SoundCloud user profile to the server. Downloads their favorites. (Overwrites any previous)",
+                "usage": [
+                    "add jack-belford-1"
+                ],
+                "level": 1
+            },
+            "list": {
+                "detail": "Shows the list of users whose Soundcloud favorites are in the database",
+                "usage": [
+                    "list"
+                ],
+                "level": 1
+            }
         }
     }
-}
+]

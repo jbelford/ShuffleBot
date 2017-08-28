@@ -2,13 +2,13 @@
 
 import * as co    from 'co';
 import * as _     from 'lodash';
-import * as Utils from '../../libs/common/Utils';
+import * as Utils from '../libs/common/Utils';
 
-import { BotConfig, Daos, SCUser, Track } from '../../typings';
-import { SoundCloudUsers } from '../../models/SoundCloudUsers';
-import { DiscordBot }      from '../../libs/DiscordBot';
-import { YoutubeAPI }      from '../../libs/api/YoutubeAPI';
-import { SoundCloudAPI }   from '../../libs/api/SoundCloudAPI';
+import { BotConfig, Daos, SCUser, Track } from '../typings';
+import { SoundCloudUsers } from '../models/SoundCloudUsers';
+import { DiscordBot }      from '../libs/DiscordBot';
+import { YoutubeAPI }      from '../libs/api/YoutubeAPI';
+import { SoundCloudAPI }   from '../libs/api/SoundCloudAPI';
 import { Message }         from 'discord.js';
 
 function parseUser(text: string) {
@@ -85,23 +85,26 @@ export function addQueueCommands(bot: DiscordBot, config: BotConfig, daos: Daos)
   const ytApi = new YoutubeAPI(config.tokens.youtube);
   const scApi = new SoundCloudAPI(config.tokens.soundcloud);
 
-  bot.on('queue', co.wrap(function* (message: Message) {
+  bot.on('q.show', co.wrap(function* (message: Message) {
     const resp = yield queuePlayerManager.get(message.guild.id).show(message);
     if (resp) message.reply(resp);
   }));
 
-  bot.on('clear', (message: Message) => {
-    queuePlayerManager.get(message.guild.id).clear();
+  bot.on('q.clear', (message: Message) => {
+    const queuePlayer = queuePlayerManager.get(message.guild.id);
+    if (queuePlayer.queuedTracks === 0) return message.reply('The queue is already empty though...');
+    queuePlayer.clear();
     message.reply('I have cleared the queue');
   });
 
-  bot.on('shuffle', co.wrap(function* (message: Message) {
+  bot.on('q.shuffle', co.wrap(function* (message: Message) {
     const resp = yield queuePlayerManager.get(message.guild.id).shuffle();
     message.reply(resp ? resp : 'Successfully shuffled the queue');
   }));
 
-  bot.on('add', co.wrap(function* (message: Message, params: string[]) {
+  bot.on('q.add', co.wrap(function* (message: Message, params: string[]) {
     try {
+      if (params.length === 0) return message.reply("You didn't specify what to add!");
       const playNext = params.includes('--next');
       const shuffle = params.includes('--shuffle');
       const paramsText = params.join(' ');
@@ -115,7 +118,8 @@ export function addQueueCommands(bot: DiscordBot, config: BotConfig, daos: Daos)
         collected = Utils.shuffleList(collected);
       }
       yield queuePlayerManager.get(message.guild.id).enqueue(collected, playNext);
-      let addedMsg = `Successfully added ${collected.length} songs `;
+      const nameOrLength = collected.length > 1 ? `${collected.length} songs` : `**${collected[0].title}**`;
+      let addedMsg = `Successfully added ${nameOrLength} `;
       addedMsg += playNext ? 'to be played next!' : 'to the queue!';
       message.reply(addedMsg);
     } catch (e) {

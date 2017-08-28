@@ -29,6 +29,7 @@ function* startBot(config: BotConfig) {
   }
 }
 
-const config = JSON.parse(fs.readFileSync('./config/config.json', 'utf8'));
-config.commands = JSON.parse(fs.readFileSync('./config/commands.json', 'utf8'));
+const config = JSON.parse(fs.readFileSync(`./config/config.json`, 'utf8'));
+config.commands = JSON.parse(fs.readFileSync(`./config/commands.json`, 'utf8'));
+config.emojis = JSON.parse(fs.readFileSync(`./config/emojis.json`, 'utf8'));
 co(startBot(config));

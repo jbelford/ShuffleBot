@@ -37,6 +37,10 @@ export class QueuePlayer {
     });
   }
 
+  public get queuedTracks() {
+    return this.queue.size();
+  }
+
   public enqueue(items: Track[], top: boolean) {
     this.refreshCache();
     this.queue.push(items, top);

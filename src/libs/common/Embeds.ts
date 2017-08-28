@@ -1,33 +1,55 @@
 import * as _ from 'lodash';
 
 import { Queue } from '../data/Queue';
-import { CommandsList, Track, SCUser }         from '../../typings';
-import { RichEmbedOptions, ClientUser, Guild } from 'discord.js';
+import { Command, CommandsList, Track, SCUser, PollOption, CommandModule } from '../../typings';
+import { RichEmbedOptions, ClientUser, Guild, Message, User } from 'discord.js';
 
-export function helpEmbed(commands: CommandsList, cmdTok: string) {
-  const embed: RichEmbedOptions = {
-    title : `Syntax:`,
-    description : '<>   =>  Argument\n{}    =>  Optional\n()     =>  Group\n|       =>  Or\n&     =>  And\n&|    =>  And/Or\n+      =>  One or many of these',
+export function commandCategoriesEmbed(cmdList: CommandsList, cmdTok: string): RichEmbedOptions {
+  const embed = {
     color : 0x5A54B8,
     author : {
-      name : "Command List",
+      name : "Command Category List",
       icon_url : "http://www.omgubuntu.co.uk/wp-content/uploads/2016/09/terminal-icon.png"
     },
-    fields : []
+    description: 'The following are categories for the various commands available:\n\n'
   };
-  const addCommands = (cmd, key) => {
-    const field = {
-      name: `${cmdTok}${key}`,
-      value: cmd.detail.join('')
-    };
-    if (!_.isNil(cmd.args)) field.name += ` ${cmd.args}`;
-    embed.fields.push(field);
-  }
-  _.forEach(commands.everyone, addCommands);
-  embed.fields.push({ name: 'ADMIN ONLY', value: 'The following are admin only commands' });
-  _.forEach(commands.admin, addCommands);
-  embed.fields.push({ name : 'For more info check out Github', value : 'https://github.com/jbelford/DiscordMusicBot' });
+  embed.description += cmdList.reduce((a, b, i) => a.concat(`${i + 1}. ${b.name}\n`), "```") + "```";
+  embed.description += `\nUse \`${cmdTok}help help\` to see more details about using this command`
   return embed;
+}
+
+export function commandListEmbed(cmdModule: CommandModule, cmdTok: string) {
+  const embed: RichEmbedOptions = {
+    color : 0x5A54B8,
+    author : {
+      name : cmdModule.name,
+      icon_url : "http://www.omgubuntu.co.uk/wp-content/uploads/2016/09/terminal-icon.png"
+    },
+    description: 'The following are commands for this category:\n\n```'
+  };
+  const prefix = cmdModule.prefix.length > 0 ? `${cmdModule.prefix}.` : "";
+  _.forEach(cmdModule.commands, (cmd, name) => {
+    if (cmd.level === 3) return;
+    embed.description += `${cmdTok}${prefix}${name}\n`
+  });
+  embed.description += '```';
+  embed.description += `\nUse \`${cmdTok}help <command>\` to see more information for that command.`
+  return embed;
+}
+
+
+export function commandDetailsEmbed(name: string, prefix: string, command: Command, cmdTok: string): RichEmbedOptions {
+  const argsDesc = _.isNil(command.args) ? '' : command.args.description.map(x => `\t${x}`).join('').replace(/</g, '***<').replace(/>/g, '>***');
+  const usage = command.usage.map(x => `${cmdTok}${prefix}${x}`).join('\n');
+  return {
+    author : {
+      name: `${cmdTok}${prefix}${name}`,
+      icon_url : "http://www.omgubuntu.co.uk/wp-content/uploads/2016/09/terminal-icon.png"
+    },
+    color : 0x5A54B8,
+    description: `${command.detail}\n\n**Arguments**: ${_.isNil(command.args) ? 'None' : `${command.args.text}\n\n${argsDesc}`}` + 
+      `\n\n**Usage**:\n\`\`\`${usage}\`\`\`\nConfused about syntax? Check out this wiki: https://github.com/jbelford/DiscordMusicBot/wiki/Command-Syntax`
+  }
 }
 
 export function inviteEmbed(inviteLink: string, user: ClientUser): RichEmbedOptions {
@@ -62,6 +84,44 @@ export function soundCloudUsersEmbed(guild: Guild, users: SCUser[]) {
   });
   return embed;
 }
+
+export function pollEmbed(question: string, options: PollOption[], user: User): RichEmbedOptions {
+  return {
+    author: {
+      name: question,
+      icon_url: 'http://images.clipartpanda.com/help-clipart-11971487051948962354zeratul_Help.svg.med.png'
+    },
+    color: 0x46DBC0,
+    description: options.reduce((o1: string, o2: PollOption) => `${o1}\n${o2.emoji}: ${o2.text}`, ''),
+    footer: {
+      icon_url: user.avatarURL,
+      text: `${user.username}'s poll`
+    }
+  }
+}
+
+export function pollResultsEmbed(question: string, options: PollOption[], message: Message, user: User) {
+  const embed: RichEmbedOptions = {
+    author: {
+      name: `Results: "${question}"`,
+      icon_url: 'https://cdn0.iconfinder.com/data/icons/shift-free/32/Complete_Symbol-128.png'
+    },
+    color: 0x46DBC0,
+    description: '',
+    footer: {
+      text: `${user.username}'s poll`,
+      icon_url: user.avatarURL
+    }
+  }
+  const counts = options.map( option => {
+    const reaction = message.reactions.find( value => value.emoji.name === option.emoji);
+    return { count: _.isNil(reaction) ? 0 : reaction.users.size - 1, text: option.text }
+  }).sort( (a, b) => b.count - a.count).forEach( value => {
+    embed.description += `\n**${value.text}**: ${value.count} Votes`;
+  });
+  return embed;
+}
+
 
 export function songEmbed(playing: Track, paused: boolean, next?: Track) {
   const embed: RichEmbedOptions = {
