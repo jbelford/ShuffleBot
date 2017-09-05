@@ -10,7 +10,7 @@
     "@types/request": "^2.0.0",
     "bufferutil": "^3.0.0",
     "co": "^4.6.0",
-    "discord.js": "11.2.1",
+    "discord.js": "11.1.0",
     "erlpack": "github:hammerandchisel/erlpack",
     "ffmpeg-binaries": "^3.2.2-3",
     "libsodium-wrappers": "^0.5.1",
@@ -23,10 +23,12 @@
     "ytdl-core": "^0.14.0"
   },
   "scripts": {
-    "start": "tsc && node ./build/app.js"
+    "start": "npm build && npm run",
+    "build": "tsc",
+    "run": "node ./build/app.js"
   },
   "engines": {
-    "node": ">=8.0.0"
+    "node": ">=6.0.0"
   },
   "engineStrict": true,
   "author": "Jack Belford",

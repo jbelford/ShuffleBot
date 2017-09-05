@@ -33,7 +33,7 @@ export class Cache {
   }
 
   public getAll(reg: RegExp) {
-    return _.filter(this.cache, (value, key) => key.match(reg));
+    return _.filter(this.cache, (value, key) => !_.isNil(key.match(reg)));
   }
 
   public removeIf(id: string) {

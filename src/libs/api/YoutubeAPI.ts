@@ -37,7 +37,7 @@ export class YoutubeAPI {
       if (resp.statusCode !== 200) throw new Error(`Code: ${resp.statusCode}`);
       const data = JSON.parse(resp.body);
       link = !_.isNil(data.nextPageToken) ? `${base}&pageToken=${data.nextPageToken}` : null;
-      _.forEach(data.items, song => {
+      _.forEach(data.items, (song: any) => {
         const artwork = _.isNil(song.snippet.thumbnails) ? 'http://beatmakerleague.com/images/No_Album_Art.png' :
                           song.snippet.thumbnails.high.url;
         const id = type ? song.id : song.snippet.resourceId.videoId;

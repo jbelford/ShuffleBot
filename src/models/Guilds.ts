@@ -3,7 +3,7 @@
 import * as _ from 'lodash';
 
 import { Db, Collection } from 'mongodb';
-import { Cache } from '../libs/data/cache';
+import { Cache } from '../libs/data/Cache';
 import { BotConfig } from '../typings';
 
 export class Guilds {
