@@ -10,7 +10,7 @@ import { Readable }    from 'stream';
 import { Cache }       from './data/Cache';
 import { Queue }       from './data/Queue';
 import { PlayerCards } from './PlayerCards';
-import { Track }       from '../typings';
+import { Track, BotConfig }       from '../typings';
 
 export class QueuePlayer {
 
@@ -18,10 +18,10 @@ export class QueuePlayer {
   private queue       : Queue<Track>;
   private connection  : VoiceConnection;
   private pcMnger     : PlayerCards;
-  private messageCache: Message;
+  public messageCache : Message;
   private volume      : number = 0.5;
 
-  constructor(private cache: Cache, private cacheId: string, private ttl: number, private scToken: string) {
+  constructor(private cache: Cache, private cacheId: string, private ttl: number, private config: BotConfig) {
     this.queue = new Queue();
     this.pcMnger = new PlayerCards(this.queue);
     this.pcMnger.on('reaction', action => {
@@ -39,6 +39,10 @@ export class QueuePlayer {
 
   public get queuedTracks() {
     return this.queue.size();
+  }
+
+  public get channel() {
+    return _.isNil(this.messageCache) ? null : this.messageCache.channel as TextChannel;
   }
 
   public enqueue(items: Track[], top: boolean) {
@@ -97,6 +101,9 @@ export class QueuePlayer {
     else if (!this.isInVoiceChannel()) return false;
     this.messageCache = message;
     this.messageCache.react('🤘');
+    this.messageCache.channel.send(`**I will now start deleting received messages a few seconds after they come in. ` +
+      `If you don't want me to do this here then use \`${this.config.commandToken}${this.config.commands.find(cat => cat.name === 'Queue').prefix}.show\` ` +
+      `in another channel to move all music spam there.**`);
     return this.createStream();
   }
 
@@ -135,9 +142,9 @@ export class QueuePlayer {
     this.connection = null;
   }
 
-  public close() {
+  public close(reason?) {
     if (this.pcMnger.deleteCards() && !_.isNil(this.messageCache)) {
-      this.messageCache.channel.send("**Closing music session due to inactivity**");
+      this.messageCache.channel.send(reason ? reason : "**Closing music session due to inactivity**");
     }
     this.stopStream();
   }
@@ -150,7 +157,7 @@ export class QueuePlayer {
     return !_.isNil(this.connection);
   }
 
-  private isStreaming() {
+  public isStreaming() {
     return this.isInVoiceChannel() && !_.isNil(this.connection.dispatcher);
   }
 
@@ -159,7 +166,7 @@ export class QueuePlayer {
   }
 
   private getStream(track: Track): Readable {
-    if (track.src === 'sc') return request(`${track.url}?client_id=${this.scToken}`) as any;
+    if (track.src === 'sc') return request(`${track.url}?client_id=${this.config.tokens.soundcloud}`) as any;
     return ytdl(track.url, { filter : 'audioonly' });
   }
 
@@ -169,19 +176,22 @@ export class QueuePlayer {
     const stream = this.getStream(this.nowPlaying);
     this.pcMnger.setPlaying(this.nowPlaying);
     this.pcMnger.newSongCard(this.messageCache.channel as TextChannel, true);
-    this.connection.playStream(stream, { volume: this.volume, passes: 1 });
+    this.connection.playStream(stream, { seek: 0, volume: this.volume, passes: 1 });
     this.connection.dispatcher.once('start', () => console.log(`Streaming: ${this.nowPlaying.title}`));
     this.connection.dispatcher.once('end', reason => {
       this.pcMnger.deleteCards();
       this.pcMnger.setPaused(false);
       this.pcMnger.hideQueue();
       this.messageCache.channel.send(`Played: *${this.nowPlaying.title}*`);
-      if (reason !== 'forceStop' && this.queue.size() > 0) {
+      if (this.connection.channel.members.every( member => member.deaf || member.user.bot )) {
+        this.messageCache.channel.send('Stopping stream since no one is listening');
+      } else if (reason !== 'forceStop' && this.queue.size() > 0) {
         console.log('Creating next stream');
         return setTimeout(() => this.createStream(), 50);
       }
       this.pcMnger.setPlaying(null);
       this.messageCache.reply('Music stream ended');
+      this.messageCache = null;
       console.log('Ended music stream');
     });
     this.connection.dispatcher.on('error', e => {

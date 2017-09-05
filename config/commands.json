@@ -43,6 +43,68 @@
                 ],
                 "level": 1
             },
+            "disableinvite": {
+                "detail": "Stop bot from joining other servers",
+                "usage": [
+                    "disableInvite"
+                ],
+                "level": 3
+            },
+            "enableinvite": {
+                "detail": "Allow bot to join other servers",
+                "usage": [
+                    "enableInvite"
+                ],
+                "level": 3
+            },
+            "servers": {
+                "args": {
+                    "text": "<page>",
+                    "description": [
+                        "<page> ~ The page number for server list"
+                    ]
+                },
+                "detail": "Show details about servers",
+                "usage": [
+                    "servers",
+                    "servers 5"
+                ],
+                "level": 3
+            },
+            "leave": {
+                "args": {
+                    "text": "<guildId>",
+                    "description": [
+                        "<guildId> ~ The guild to make the bot leave"
+                    ]
+                },
+                "detail": "Make bot leave a server",
+                "usage": [
+                    "leave 23242292"
+                ],
+                "level": 3
+            },
+            "musiclimit": {
+                "args": {
+                    "text": "<limit>",
+                    "description": [
+                        "<limit> ~ The new limit"
+                    ]
+                },
+                "detail": "Check or set the limit for number of music sessions allowed at once",
+                "usage": [
+                    "musiclimit",
+                    "musiclimit 50"
+                ],
+                "level": 3
+            },
+            "musicstop": {
+                "detail": "Stop all music sessions",
+                "usage": [
+                    "musicstop"
+                ],
+                "level": 3
+            },
             "reset": {
                 "detail": "Tells the bot to shut down.",
                 "level": 3
@@ -189,6 +251,14 @@
                     "add jack-belford-1"
                 ],
                 "level": 1
+            },
+            "remove": {
+                "text": "<user_permalink>",
+                "detail": "Removes a SoundCloud user profile from the server.",
+                "usage": [
+                    "remove"
+                ],
+                "level": 2
             },
             "list": {
                 "detail": "Shows the list of users whose Soundcloud favorites are in the database",

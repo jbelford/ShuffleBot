@@ -2,7 +2,7 @@
 
 import * as _ from 'lodash';
 
-import { Db, Collection }    from 'mongodb';
+import { Db, Collection, FindAndModifyWriteOpResultObject }    from 'mongodb';
 import { EventEmitter }      from 'events';
 import { SoundCloudAPI }     from '../libs/api/SoundCloudAPI';
 import { Cache }             from '../libs/data/Cache';
@@ -53,7 +53,7 @@ export class SoundCloudUsers extends EventEmitter {
     }
   }
 
-  *listUsers(guildId: string): IterableIterator<SCUser[]> {
+  public *listUsers(guildId: string): IterableIterator<SCUser[]> {
     const cachedId = `${this.collectionName}:${guildId}`;
     if (this.cache.has(cachedId)) return this.cache.get(cachedId);
     const userList: SCUser[] = yield this.collection.find({ guilds: { $elemMatch: { $eq: guildId }}}, { "list" : 0 }).toArray() as any;
@@ -61,11 +61,25 @@ export class SoundCloudUsers extends EventEmitter {
     return userList;
   }
 
-  *getUser(user_permalink: string): IterableIterator<SCUser> {
+  public *getUser(user_permalink: string): IterableIterator<SCUser> {
     const cachedId = `${this.collectionName}:${user_permalink}`;
     if (this.cache.has(cachedId)) return this.cache.get(cachedId);
     const user: SCUser = yield this.collection.findOne({ permalink : user_permalink }) as any;
     this.cache.update(cachedId, user);
     return user;
+  }
+
+  public *removeUser(userquery: string, guildId: string) {
+    const cachedId = `${this.collectionName}:${guildId}`;
+    if (this.cache.has(cachedId) && this.cache.get(cachedId).every((user: SCUser) => user.permalink !== userquery && user.username !== userquery)) {
+      return false;
+    }
+    const doc: FindAndModifyWriteOpResultObject = yield this.collection.findOneAndUpdate({ $or: [ { permalink: userquery }, { username: userquery }] }, { $pullAll: { guilds: [ guildId ] } });
+    if (doc.lastErrorObject.updatedExisting) {
+      if (doc.value.guilds.length === 1) this.collection.deleteOne({ _id: doc.value._id });
+      this.cache.removeIf(cachedId);
+      return true;
+    }
+    return false;
   }
 }

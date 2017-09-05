@@ -31,14 +31,14 @@ function* getUserList(message: Message, params: string, scUsers: SoundCloudUsers
       message.channel.send(`The user ${query[0]} isn't recognized.`);
       continue;
     }
-    message.channel.send(`Adding ${user.permalink}'s tracks... Done`);
+    message.channel.send(`Adding ${user.username}'s tracks... Done`);
     if (query[1].toLowerCase() === "all") {
       songs = songs.concat(user.list);
       continue;
     }
     const range = query[1].split(',').map( x => parseInt(x) );
     if (range.filter( x => isNaN(x) ).length) {
-      message.channel.send(`The query for user ${user.permalink} isn't valid.`);
+      message.channel.send(`The query for user ${user.username} isn't valid.`);
     } else if (range.length > 1) {
       songs = songs.concat(user.list.slice(range[0], range[1]));
     } else {
@@ -85,46 +85,56 @@ export function addQueueCommands(bot: DiscordBot, config: BotConfig, daos: Daos)
   const ytApi = new YoutubeAPI(config.tokens.youtube);
   const scApi = new SoundCloudAPI(config.tokens.soundcloud);
 
-  bot.on('q.show', co.wrap(function* (message: Message) {
-    const resp = yield queuePlayerManager.get(message.guild.id).show(message);
-    if (resp) message.reply(resp);
-  }));
+  const commands: { [x: string]: (message: Message, params: string[], level: number) => any } = {
 
-  bot.on('q.clear', (message: Message) => {
-    const queuePlayer = queuePlayerManager.get(message.guild.id);
-    if (queuePlayer.queuedTracks === 0) return message.reply('The queue is already empty though...');
-    queuePlayer.clear();
-    message.reply('I have cleared the queue');
-  });
+    'show': co.wrap(function* (message: Message) {
+      const resp = yield queuePlayerManager.get(message.guild.id).show(message);
+      if (resp) message.reply(resp);
+    }),
 
-  bot.on('q.shuffle', co.wrap(function* (message: Message) {
-    const resp = yield queuePlayerManager.get(message.guild.id).shuffle();
-    message.reply(resp ? resp : 'Successfully shuffled the queue');
-  }));
+    'clear': (message: Message) => {
+      const queuePlayer = queuePlayerManager.get(message.guild.id);
+      if (queuePlayer.queuedTracks === 0) return message.reply('The queue is already empty though...');
+      queuePlayer.clear();
+      message.reply('I have cleared the queue');
+    },
 
-  bot.on('q.add', co.wrap(function* (message: Message, params: string[]) {
-    try {
-      if (params.length === 0) return message.reply("You didn't specify what to add!");
-      const playNext = params.includes('--next');
-      const shuffle = params.includes('--shuffle');
-      const paramsText = params.join(' ');
-      let collected: Track[] = yield getUserList(message, paramsText, scUsers);
-      collected = collected.concat(yield getYTList(message, paramsText, ytApi));
-      collected = collected.concat(yield getSCList(message, paramsText, scApi));
-      if (collected.length === 0) {
-        const query = paramsText.replace(/(^|\s)--(shuffle|next)($|\s)/g, '').trim();
-        collected.push(yield ytApi.searchForVideo(query));
-      } else if (shuffle) {
-        collected = Utils.shuffleList(collected);
+    'shuffle': co.wrap(function* (message: Message) {
+      const resp = yield queuePlayerManager.get(message.guild.id).shuffle();
+      message.reply(resp ? resp : 'Successfully shuffled the queue');
+    }),
+
+    'add': co.wrap(function* (message: Message, params: string[]) {
+      try {
+        if (params.length === 0) return message.reply("You didn't specify what to add!");
+        const playNext = params.includes('--next');
+        const shuffle = params.includes('--shuffle');
+        const paramsText = params.join(' ');
+        let collected: Track[] = yield getUserList(message, paramsText, scUsers);
+        collected = collected.concat(yield getYTList(message, paramsText, ytApi));
+        collected = collected.concat(yield getSCList(message, paramsText, scApi));
+        if (collected.length === 0) {
+          const query = paramsText.replace(/(^|\s)--(shuffle|next)($|\s)/g, '').trim();
+          collected.push(yield ytApi.searchForVideo(query));
+        } else if (shuffle) {
+          collected = Utils.shuffleList(collected);
+        }
+        yield queuePlayerManager.get(message.guild.id).enqueue(collected, playNext);
+        const nameOrLength = collected.length > 1 ? `${collected.length} songs` : `**${collected[0].title}**`;
+        let addedMsg = `Successfully added ${nameOrLength} `;
+        addedMsg += playNext ? 'to be played next!' : 'to the queue!';
+        message.reply(addedMsg);
+      } catch (e) {
+        message.reply(`Failed to add to queue`);
+        console.log(e);
       }
-      yield queuePlayerManager.get(message.guild.id).enqueue(collected, playNext);
-      const nameOrLength = collected.length > 1 ? `${collected.length} songs` : `**${collected[0].title}**`;
-      let addedMsg = `Successfully added ${nameOrLength} `;
-      addedMsg += playNext ? 'to be played next!' : 'to the queue!';
-      message.reply(addedMsg);
-    } catch (e) {
-      message.reply(`Failed to add to queue`);
-      console.log(e);
-    }
-  }));
+    })
+  }
+
+  bot.on(config.commands.find(cat => cat.name === 'Queue').prefix, (command: string, message: Message, params: string[], level: number) => {
+    const player = queuePlayerManager.get(message.guild.id);
+    if (player.channel && player.channel.id !== message.channel.id)
+      return message.reply(`My music channel has been locked in for \`#${player.channel.name}\`. Try again over there!`);
+    commands[command](message, params, level);
+  });
 }

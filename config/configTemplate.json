@@ -10,7 +10,7 @@
     "botPerms": [
         "ADD_REACTIONS",
         "CHANGE_NICKNAME",
-        "READ_MESSAGES",
+        "VIEW_CHANNEL",
         "SEND_MESSAGES",
         "SEND_TTS_MESSAGES",
         "MANAGE_MESSAGES",
@@ -22,5 +22,13 @@
     ],
     "disabledEvents": [
         "TYPING_START"
-    ]
+    ],
+    "sc": {
+        "limit": 5,
+        "interval": 0.5
+    },
+    "invite": true,
+    "music": {
+        "limit": 10
+    }
 }

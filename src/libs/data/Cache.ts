@@ -32,6 +32,10 @@ export class Cache {
     return this.cache[id].item;
   }
 
+  public getAll(reg: RegExp) {
+    return _.filter(this.cache, (value, key) => key.match(reg));
+  }
+
   public removeIf(id: string) {
     if (this.has(id)) {
       delete this.cache[id];

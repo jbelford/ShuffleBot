@@ -18,7 +18,7 @@ export function commandCategoriesEmbed(cmdList: CommandsList, cmdTok: string): R
   return embed;
 }
 
-export function commandListEmbed(cmdModule: CommandModule, cmdTok: string) {
+export function commandListEmbed(cmdModule: CommandModule, cmdTok: string, level: number) {
   const embed: RichEmbedOptions = {
     color : 0x5A54B8,
     author : {
@@ -29,7 +29,7 @@ export function commandListEmbed(cmdModule: CommandModule, cmdTok: string) {
   };
   const prefix = cmdModule.prefix.length > 0 ? `${cmdModule.prefix}.` : "";
   _.forEach(cmdModule.commands, (cmd, name) => {
-    if (cmd.level === 3) return;
+    if (level < cmd.level) return;
     embed.description += `${cmdTok}${prefix}${name}\n`
   });
   embed.description += '```';
@@ -69,19 +69,18 @@ export function inviteEmbed(inviteLink: string, user: ClientUser): RichEmbedOpti
 export function soundCloudUsersEmbed(guild: Guild, users: SCUser[]) {
   const embed: RichEmbedOptions = {
     author: {
-      name: `SoundCloud Users: ${guild.name}`,
+      name: `SoundCloud Users`,
       icon_url: guild.iconURL
     },
-    description: "List of SoundCloud users known by this guild",
-    color: 0xff7700,
-    fields: []
+    description: "Here are the SoundCloud users registered for this server.\n```",
+    color: 0xff7700
   };
   _.forEach(users, (user, key) => {
-    embed.fields.push({
-      name: `${key + 1}:\t${user.username}`,
-      value: `|--> Permalink: ${user.permalink}\n|--> Songs: ${user.favorites}` 
-    });
+    embed.description += `${key + 1}:  ${user.username}\n` +
+      `\tPermalink: ${user.permalink}\n` +
+      `\tSongs: ${user.favorites}\n\n`;
   });
+  embed.description += '```';
   return embed;
 }
 

@@ -9,18 +9,23 @@ export class QueuePlayerManager {
 
   private ttl: number = 1000 * 60 * 60;
   private cache: Cache;
-  private scToken: string;
 
-  constructor(db: Db, cache: Cache, config: BotConfig) {
+  constructor(db: Db, cache: Cache, private config: BotConfig) {
     this.cache = cache;
-    this.scToken = config.tokens.soundcloud;
   }
 
   public get(guildId): QueuePlayer {
     const cacheId = `QueuePlayer:${guildId}`;
     if (!this.cache.has(cacheId)) {
-      this.cache.update(cacheId, new QueuePlayer(this.cache, cacheId, this.ttl, this.scToken), this.ttl);
+      this.cache.update(cacheId, new QueuePlayer(this.cache, cacheId, this.ttl, this.config), this.ttl);
     }
     return this.cache.get(cacheId);
+  }
+
+  public leaveAll() {
+    this.cache.getAll(/^QueuePlayer:\d+$/g).forEach( value => {
+      const queuePlayer: QueuePlayer = value.item;
+      queuePlayer.close(`Closing music stream by request of administrator. This was likely done due to heavy server load. Sorry about that.`);
+    });
   }
 }

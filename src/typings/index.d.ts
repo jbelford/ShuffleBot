@@ -3,6 +3,7 @@ import { PermissionResolvable, WSEventType, Emoji } from 'discord.js';
 import { SoundCloudUsers } from '../models/SoundCloudUsers';
 import { QueuePlayerManager } from '../models/QueuePlayerManager';
 import { PollManager } from '../models/PollManager';
+import { Guilds } from '../models/Guilds';
 
 type Track = {
   title: string;
@@ -32,6 +33,14 @@ type BotConfig = {
   commandToken: string;
   botPerms: PermissionResolvable[];
   disabledEvents: WSEventType[];
+  sc: {
+    limit: number;
+    interval: number;
+  };
+  invite: boolean;
+  music: {
+    limit: number;
+  };
   commands: CommandsList;
   emojis: string[];
 };
@@ -59,7 +68,8 @@ type CommandsList = CommandModule[];
 type Daos = {
   soundCloudUsers: SoundCloudUsers;
   queuePlayerManager: QueuePlayerManager;
-  pollManager: PollManager
+  pollManager: PollManager;
+  guilds: Guilds;
 };
 
 type PollOption = {
