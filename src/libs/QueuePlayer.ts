@@ -183,11 +183,14 @@ export class QueuePlayer {
       this.pcMnger.setPaused(false);
       this.pcMnger.hideQueue();
       this.messageCache.channel.send(`Played: *${this.nowPlaying.title}*`);
-      if (this.connection.channel.members.every( member => member.deaf || member.user.bot )) {
-        this.messageCache.channel.send('Stopping stream since no one is listening');
-      } else if (reason !== 'forceStop' && this.queue.size() > 0) {
-        console.log('Creating next stream');
-        return setTimeout(() => this.createStream(), 50);
+      if (reason !== 'forceStop') {
+        if (this.connection.channel.members.every( member => member.deaf || member.user.bot )) {
+          this.messageCache.channel.send('Stopping stream since no one is listening');
+          this.connection.disconnect();
+        } else if (this.queue.size() > 0) {
+          console.log('Creating next stream');
+          return setTimeout(() => this.createStream(), 50);
+        }
       }
       this.pcMnger.setPlaying(null);
       this.messageCache.reply('Music stream ended');
