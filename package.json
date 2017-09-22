@@ -34,7 +34,7 @@
   "author": "Jack Belford",
   "license": "GPL-3.0+",
   "devDependencies": {
-    "@types/node": "^8.0.19",
+    "@types/node": "^8.0.28",
     "typescript": "^2.4.2"
   }
 }

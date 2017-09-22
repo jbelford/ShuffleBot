@@ -9,79 +9,12 @@ import { SoundCloudUsers } from '../models/SoundCloudUsers';
 import { DiscordBot }      from '../libs/DiscordBot';
 import { YoutubeAPI }      from '../libs/api/YoutubeAPI';
 import { SoundCloudAPI }   from '../libs/api/SoundCloudAPI';
-import { Message }         from 'discord.js';
-
-function parseUser(text: string) {
-  const userQueries: string[][]= [];
-  const dbReg = /(^|\s)([^\s]+)\s+\[\s*(-?\d+|-?\d+\s*,\s*-?\d+|ALL)\s*\]/gi;
-  let match: string[];
-  while (!_.isNil(match = dbReg.exec(text))) {
-    userQueries.push(match.slice(2, 4));
-  }
-  return userQueries;
-}
-
-function* getUserList(message: Message, params: string, scUsers: SoundCloudUsers): IterableIterator<Track[]> {
-  const userQueries = parseUser(params);
-  let songs: Track[] = [];
-  for (const i in userQueries) {
-    const query = userQueries[i];
-    const user: SCUser = yield scUsers.getUser(query[0]) as any;
-    if (_.isNil(user)) {
-      message.channel.send(`The user ${query[0]} isn't recognized.`);
-      continue;
-    }
-    message.channel.send(`Adding ${user.username}'s tracks... Done`);
-    if (query[1].toLowerCase() === "all") {
-      songs = songs.concat(user.list);
-      continue;
-    }
-    const range = query[1].split(',').map( x => parseInt(x) );
-    if (range.filter( x => isNaN(x) ).length) {
-      message.channel.send(`The query for user ${user.username} isn't valid.`);
-    } else if (range.length > 1) {
-      songs = songs.concat(user.list.slice(range[0], range[1]));
-    } else {
-      const list = range[0] < 0 ? user.list.slice(range[0]) : user.list.slice(0, range[0]);
-      songs = songs.concat(list);
-    }
-  }
-  return songs;
-}
-
-function* getYTList(message: Message, params: string, ytApi: YoutubeAPI) {
-  const ytQuery = ytApi.parseUrl(params);
-  if (!_.isNil(ytQuery)) {
-    const notify: Message = yield message.channel.send('Retrieving songs from YouTube url...');
-      try {
-        const videos: Track[] = yield ytApi.getVideos();
-        yield notify.edit(`${notify.content} Done`);
-        return videos;
-      } catch (e) {
-        yield notify.edit(`${notify.content} Failed. ${e}`);
-      }
-  }
-  return [] as Track[];
-}
-
-function* getSCList(message: Message, params: string, scApi: SoundCloudAPI) {
-  const scQuery = scApi.parseUrl(params);
-  if (!_.isNil(scQuery)) {
-    const notify: Message = yield message.channel.send('Retrieving songs from SoundCloud url...');
-    try {
-      const tracks: Track[] = yield scApi.getTracks();
-      yield notify.edit(`${notify.content} Done`);
-      return tracks;
-    } catch (e) {
-      yield notify.edit(`${notify.content} Failed. ${e}`);
-    }
-  }
-  return [] as Track[];
-}
+import { Message, TextChannel } from 'discord.js';
 
 export function addQueueCommands(bot: DiscordBot, config: BotConfig, daos: Daos) {
   const queuePlayerManager = daos.queuePlayerManager;
   const scUsers = daos.soundCloudUsers;
+  const users = daos.users;
   const ytApi = new YoutubeAPI(config.tokens.youtube);
   const scApi = new SoundCloudAPI(config.tokens.soundcloud);
 
@@ -110,12 +43,19 @@ export function addQueueCommands(bot: DiscordBot, config: BotConfig, daos: Daos)
         const playNext = params.includes('--next');
         const shuffle = params.includes('--shuffle');
         const paramsText = params.join(' ');
-        let collected: Track[] = yield getUserList(message, paramsText, scUsers);
-        collected = collected.concat(yield getYTList(message, paramsText, ytApi));
-        collected = collected.concat(yield getSCList(message, paramsText, scApi));
+        let collected: Track[] = yield Utils.getUserList(message, paramsText, scUsers);
+        collected = collected.concat(yield Utils.getYTList(message, paramsText, ytApi));
+        collected = collected.concat(yield Utils.getSCList(message, paramsText, scApi));
+        collected = collected.concat(yield Utils.getPlaylist(message, paramsText, users));
         if (collected.length === 0) {
           const query = paramsText.replace(/(^|\s)--(shuffle|next)($|\s)/g, '').trim();
-          collected.push(yield ytApi.searchForVideo(query));
+          const songs: Track[] = yield ytApi.searchForVideo(query);
+          const options = songs.map( (song, idx) => { 
+            return { option: `${idx + 1}. ${song.title}`, select: [`${idx + 1}`] }
+          });
+          const songIdx: number = yield Utils.question(`Select which song you wanted to add:`, options,
+            1000 * 60 * 5, message.author.id, message.channel as TextChannel);
+          collected.push(songs[songIdx]);
         } else if (shuffle) {
           collected = Utils.shuffleList(collected);
         }
@@ -125,7 +65,7 @@ export function addQueueCommands(bot: DiscordBot, config: BotConfig, daos: Daos)
         addedMsg += playNext ? 'to be played next!' : 'to the queue!';
         message.reply(addedMsg);
       } catch (e) {
-        message.reply(`Failed to add to queue`);
+        message.reply(`Failed to add anything to the queue.`);
         console.log(e);
       }
     })

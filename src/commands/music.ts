@@ -41,7 +41,7 @@ export function addMusicCommands(bot: DiscordBot, config: BotConfig, daos: Daos)
         return yield message.reply(`Current volume: \`${player.getVolume()}%\``);
   
       const resp = player.setVolume(parseInt(params[0]) || -1);
-      yield message.reply(resp);
+      if (resp) yield message.reply(resp);
     }),
 
     'join': co.wrap(joinHandler),

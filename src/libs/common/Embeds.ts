@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 
 import { Queue } from '../data/Queue';
-import { Command, CommandsList, Track, SCUser, PollOption, CommandModule } from '../../typings';
+import { Command, CommandsList, Track, SCUser, PollOption, CommandModule, Playlists, GuildUser } from '../../typings';
 import { RichEmbedOptions, ClientUser, Guild, Message, User } from 'discord.js';
 
 export function commandCategoriesEmbed(cmdList: CommandsList, cmdTok: string): RichEmbedOptions {
@@ -37,7 +37,6 @@ export function commandListEmbed(cmdModule: CommandModule, cmdTok: string, level
   return embed;
 }
 
-
 export function commandDetailsEmbed(name: string, prefix: string, command: Command, cmdTok: string): RichEmbedOptions {
   const argsDesc = _.isNil(command.args) ? '' : command.args.description.map(x => `\t${x}`).join('').replace(/</g, '***<').replace(/>/g, '>***');
   const usage = command.usage.map(x => `${cmdTok}${prefix}${x}`).join('\n');
@@ -50,6 +49,53 @@ export function commandDetailsEmbed(name: string, prefix: string, command: Comma
     description: `${command.detail}\n\n**Arguments**: ${_.isNil(command.args) ? 'None' : `${command.args.text}\n\n${argsDesc}`}` + 
       `\n\n**Usage**:\n\`\`\`${usage}\`\`\`\nConfused about syntax? Check out this wiki: https://github.com/jbelford/DiscordMusicBot/wiki/Command-Syntax`
   }
+}
+
+export function playlistCategoriesEmbed(serverName: string, cmdTok: string): RichEmbedOptions {
+  return {
+    color : 0xc6e20d,
+    author : {
+      name : `Playlist Categories`,
+      icon_url : 'https://cdn0.iconfinder.com/data/icons/social-messaging-ui-color-shapes/128/list-circle-blue-512.png'
+    },
+    description : `The following are categories of playlists you can use:\n` +
+      `\`\`\`\n1. ShuffleBot's Playlists\n2. ${serverName}'s Playlists\n3. My Playlists\n\`\`\`` +
+      `\nUse \`${cmdTok}help pl.list\` to see more details about using this command`
+  };
+}
+
+export function userPlaylistsEmbed(user: User, playlists: Playlists, personal: boolean): RichEmbedOptions {
+  const embed: RichEmbedOptions = {
+    color: 0xc6e20d,
+    author: {
+      name: `${personal ? 'Your' : `${user.username}'s`} Playlists`,
+      icon_url: user.avatarURL
+    },
+    description: '```'
+  };
+  let i = 1;
+  _.forEach(playlists.list, (playlist, key) => {
+    embed.description += `${i++}: ${playlist.name}\n\tID: ${key}\tSONGS: ${playlist.size}\n`;
+  });
+  embed.description += '```';
+  return embed;
+}
+
+export function guildPlaylistsEmbed(guild: Guild, playlists: any): RichEmbedOptions {
+  const embed: RichEmbedOptions = {
+    color: 0xc6e20d,
+    author: {
+      name: `${guild.name}'s Playlists`,
+      icon_url: guild.iconURL
+    },
+    description: 'This is the list of playlists from all the users across the server:\n```'
+  };
+  let i = 1;
+  _.forEach(playlists.list, (playlist: any, key) => {
+    embed.description += `${i++}: ${playlist.name}\n\tID: ${key}\tSONGS: ${playlist.size}\tOWNER: ${playlist.owner}\n\n`;
+  });
+  embed.description += '```';
+  return embed;
 }
 
 export function inviteEmbed(inviteLink: string, user: ClientUser): RichEmbedOptions {

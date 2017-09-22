@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <title id='title'></title>
+    <style>
+      table {
+        border: 2px solid seashell;
+        padding: 0.5%;
+        border-radius: 10px;
+      }
+      tr {
+        border: 1px dashed rgba(255, 245, 238, 0.34);
+      }
+      td {
+        color: seashell;
+        padding: 0.3%;
+        font-size: 125%;
+        font-family:Courier New, Courier, monospace
+      }
+      img {
+        width: 50px;
+        height: 50px;
+        border: 1px solid black;
+        border-radius: 5px;
+        vertical-align: middle;
+      }
+      button {
+        font-family:Verdana, Geneva, Tahoma, sans-serif;
+        background-color: rgba(59, 180, 180, 0.7);
+        border: none;
+        color: white;
+        padding: 15px 32px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 16px;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  
+  <body style="background-color: #2E2950">
+    <h1 id='name' style="text-align:center;color:seashell;font-family:Courier New, Courier, monospace"></h1>
+    <h3 id='detail' style="text-align:center;color:seashell;font-family:Courier New, Courier, monospace"></h3>
+    <table id="songTable" align='center' style='width:85%;'></table>
+    <div align='center' style='margin-top: 1%' >
+        <button id='prevPage' onclick='prevPage()'>Previous Page</button>
+        <h2 id='pageNum' style="color:seashell; display:inline-block; margin-left: 1%; margin-right: 1%"></h2>
+        <button id='nextPage' onclick='nextPage()'>Next Page</button>
+    </div>
+  </body>
+
+  <script type="text/javascript">
+    // const title = 'Test Playlist #1';
+    // const detail = 'Owner: Skellskull ~ Songs: 2 ~ ID: test';
+    // const songs = [ { title: 'Song 1', poster: 'My Artist', pic: 'https://i1.sndcdn.com/artworks-000242630338-qsyff7-t500x500.jpg' }, { title: 'Song 2', poster: 'My artist 2', pic: 'https://i1.sndcdn.com/artworks-000242630338-qsyff7-t500x500.jpg' }];
+    const title = '%TITLE%';
+    const detail = '%DETAIL%';
+    const songs = '%SONGS%';
+
+    document.getElementById('title').innerHTML = title;
+    document.getElementById('name').innerHTML = title;
+    document.getElementById('detail').innerHTML = detail;
+
+    const maxSongsPerPage = 100;
+    const maxPage = Math.ceil(songs.length / maxSongsPerPage);
+
+    var page = 0; 
+
+    const table = document.getElementById('songTable');
+    const pageNumElem = document.getElementById('pageNum');
+    const prevPageButton = document.getElementById('prevPage');
+    const nextPageButton = document.getElementById('nextPage');
+    pageNumElem.innerHTML = page + 1;
+
+    prevPageButton.style.visibility = 'hidden';
+    if (page >= maxPage - 1) nextPageButton.style.visibility = 'hidden';
+
+    function changePage(pageNumber) {
+      while (table.hasChildNodes()) {
+        table.removeChild(table.lastChild);
+      }
+      songs.slice(page * maxSongsPerPage, page * maxSongsPerPage + maxSongsPerPage).forEach(function (song, idx) {
+        const row = table.insertRow(idx);
+        const cells = [0,1,2].map(function(x) { return row.insertCell(x); });
+        var img = document.createElement('img');
+        img.src = song.pic;
+        cells[0].innerHTML = `${page * maxSongsPerPage + idx + 1}.`;
+        cells[0].style.textAlign = 'center';
+        cells[1].appendChild(img);
+        cells[2].style.width = '100%';
+        cells[2].style.textAlign = 'left';
+        cells[2].innerHTML = song.title + '<br>' + song.poster;
+      });
+    }
+
+    function nextPage() {
+      page++;
+      if (page === maxPage - 1) nextPageButton.style.visibility = 'hidden';
+      if (prevPageButton.style.visibility === 'hidden') prevPageButton.style.visibility = 'visible';
+      pageNumElem.innerHTML = page + 1;
+      changePage(page);
+    }
+
+    function prevPage() {
+      page--;
+      if (page === 0) prevPageButton.style.visibility = 'hidden';
+      if (nextPageButton.style.visibility === 'hidden') nextPageButton.style.visibility = 'visible';
+      pageNumElem.innerHTML = page + 1;
+      changePage(page);
+    }
+
+    changePage(page);
+  </script>
+
+</html>

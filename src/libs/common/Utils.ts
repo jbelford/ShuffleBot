@@ -1,6 +1,13 @@
-import * as co from 'co';
+import * as co      from 'co';
 import * as request from 'request';
-import { Message, EmojiIdentifierResolvable } from 'discord.js';
+import * as _       from 'lodash';
+
+import { SoundCloudAPI }   from '../api/SoundCloudAPI';
+import { YoutubeAPI }      from '../api/YoutubeAPI';
+import { Track, SCUser, GuildUser }   from '../../typings';
+import { Users }           from '../../models/Users';
+import { SoundCloudUsers } from '../../models/SoundCloudUsers';
+import { TextChannel, Message, EmojiIdentifierResolvable } from 'discord.js';
 
 export function shuffleList<T>(list: T[]) {
   for (let i = 0; i < list.length; i++) {
@@ -34,3 +41,111 @@ export function requestPromise(uri: string, options?: request.CoreOptions): Prom
   });
 }
 
+export function question(text: string, options: { option: string, select: string[] }[], time: number, userId: string, channel: TextChannel): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const msgText = options.reduce((a, b) => `${a}\n${b.option}`, `${text}\n\`\`\``) + '```';
+    channel.send(msgText).then( () => {
+      const collector = channel.createMessageCollector( (m: Message) => m.author.id === userId, { time: time });
+      collector.on('collect', m => {
+        const content = m.content.trim().toLowerCase().split(/\s+/g)[0];
+        const idx = options.findIndex( (val) => val.select.includes(content));
+        if (idx >= 0) {
+          collector.stop();
+          return resolve(idx);
+        }
+      });
+      collector.on('end', (collected, reason) => {
+        if (reason === 'time') return reject();
+      });
+    });
+  });
+}
+
+function parseUser(text: string) {
+  const userQueries: string[][]= [];
+  const dbReg = /(^|\s)([^\s]+)\s+\[\s*(-?\d+|-?\d+\s*,\s*-?\d+|ALL)\s*\]/gi;
+  let match: string[];
+  while (!_.isNil(match = dbReg.exec(text))) {
+    userQueries.push(match.slice(2, 4));
+  }
+  return userQueries;
+}
+
+export function* getUserList(message: Message, params: string, scUsers: SoundCloudUsers): IterableIterator<Track[]> {
+  const userQueries = parseUser(params);
+  let songs: Track[] = [];
+  for (const i in userQueries) {
+    const query = userQueries[i];
+    const user: SCUser = yield scUsers.getUser(query[0]) as any;
+    if (_.isNil(user)) {
+      message.channel.send(`The user ${query[0]} isn't recognized.`);
+      continue;
+    }
+    message.channel.send(`Adding ${user.username}'s tracks... Done`);
+    if (query[1].toLowerCase() === "all") {
+      songs = songs.concat(user.list);
+      continue;
+    }
+    const range = query[1].split(',').map( x => parseInt(x) );
+    if (range.some( x => isNaN(x) )) {
+      message.channel.send(`The query for user ${user.username} isn't valid.`);
+    } else if (range.length > 1) {
+      songs = songs.concat(user.list.slice(range[0], range[1] === 0 ? user.list.length : range[1]));
+    } else {
+      const list = range[0] < 0 ? user.list.slice(range[0]) : user.list.slice(0, range[0]);
+      songs = songs.concat(list);
+    }
+  }
+  return songs;
+}
+
+export function* getPlaylist(message: Message, params: string, users: Users) {
+  const plReg = /(^|\s)pl\.([^\s]+)($|\s)/g;
+  const plQueries: string[] = [];
+  let match: string[];
+  while (!_.isNil(match = plReg.exec(params))) {
+    plQueries.push(match[2]);
+  }
+  let songs: Track[] = [];
+  for (const i in plQueries) {
+    const plId = plQueries[i];
+    const user: GuildUser = yield users.getUserFromPlaylistId(plId);
+    if (_.isNil(user)) {
+      message.channel.send(`The playlist \`${plId}\` isn't recognized.`);
+      continue;
+    }
+    message.channel.send(`Adding tracks from playlist \`${user.playlists.list[plId].name}\`... Done`);
+    songs = songs.concat(user.playlists.list[plId].list);
+  }
+  return songs;
+}
+
+export function* getYTList(message: Message, params: string, ytApi: YoutubeAPI) {
+  const ytQuery = ytApi.parseUrl(params);
+  if (!_.isNil(ytQuery)) {
+    const notify: Message = yield message.channel.send('Retrieving songs from YouTube url...');
+      try {
+        const videos: Track[] = yield ytApi.getVideos();
+        yield notify.edit(`${notify.content} Done`);
+        return videos;
+      } catch (e) {
+        yield notify.edit(`${notify.content} Failed. ${e}`);
+      }
+  }
+  return [] as Track[];
+}
+
+export function* getSCList(message: Message, params: string, scApi: SoundCloudAPI) {
+  const scQuery = scApi.parseUrl(params);
+  if (!_.isNil(scQuery)) {
+    const notify: Message = yield message.channel.send('Retrieving songs from SoundCloud url...');
+    try {
+      const tracks: Track[] = yield scApi.getTracks();
+      yield notify.edit(`${notify.content} Done`);
+      return tracks;
+    } catch (e) {
+      yield notify.edit(`${notify.content} Failed. ${e}`);
+    }
+  }
+  return [] as Track[];
+}

@@ -55,18 +55,20 @@ export class YoutubeAPI {
 
   *searchForVideo(searchTerms: string) {
     const query = querystring.stringify({ q : searchTerms });
-    const resp = yield requestPromise(`${this.YT_API}/search?part=snippet&${query}&maxResults=1&type=video&key=${this.key}`);
+    const resp = yield requestPromise(`${this.YT_API}/search?part=snippet&${query}&maxResults=5&type=video&key=${this.key}`);
     if (resp.statusCode !== 200) throw new Error(`Code: ${resp.statusCode}`);
-    const data = JSON.parse(resp.body).items[0];
-    if (_.isNil(data)) throw new Error('No songs fit that query');
-    const artwork = _.isNil(data.snippet.thumbnails) ? 'http://beatmakerleague.com/images/No_Album_Art.png' :
-                      data.snippet.thumbnails.high.url;
-    return {
-        "title"  : data.snippet.title,
-        "url"    : `https://www.youtube.com/watch?v=${data.id.videoId}`,
-        "poster" : data.snippet.channelTitle,
-        "pic"    : artwork,
-        "src"    : "yt"
-    };
+    const items = JSON.parse(resp.body).items;
+    if (_.isNil(items) || items.length === 0) throw new Error('No songs fit that query');
+    return items.map( item => {
+      const artwork = _.isNil(item.snippet.thumbnails) ? 'http://beatmakerleague.com/images/No_Album_Art.png' :
+            item.snippet.thumbnails.high.url;
+      return {
+      "title"  : item.snippet.title,
+      "url"    : `https://www.youtube.com/watch?v=${item.id.videoId}`,
+      "poster" : item.snippet.channelTitle,
+      "pic"    : artwork,
+      "src"    : "yt"
+      };
+    });
   }
 }

@@ -101,9 +101,9 @@ export class QueuePlayer {
     else if (!this.isInVoiceChannel()) return false;
     this.messageCache = message;
     this.messageCache.react('🤘');
-    this.messageCache.channel.send(`**I will now start deleting received messages a few seconds after they come in. ` +
-      `If you don't want me to do this here then use \`${this.config.commandToken}${this.config.commands.find(cat => cat.name === 'Queue').prefix}.show\` ` +
-      `in another channel to move all music spam there.**`);
+    // this.messageCache.channel.send(`**I will now start deleting received messages a few seconds after they come in. ` +
+    //   `If you don't want me to do this here then use \`${this.config.commandToken}${this.config.commands.find(cat => cat.name === 'Queue').prefix}.show\` ` +
+    //   `in another channel to move all music spam there.**`);
     return this.createStream();
   }
 

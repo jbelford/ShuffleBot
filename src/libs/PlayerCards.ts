@@ -22,7 +22,7 @@ export class PlayerCards extends EventEmitter {
 
   private songCard: EmbedButtonMsg;
   private queueCard: EmbedButtonMsg;
-  private collector: MessageCollector;
+  // private collector: MessageCollector;
   private playing: Track;
   private paused: boolean = false;
   private showQ: boolean = false;
@@ -39,15 +39,15 @@ export class PlayerCards extends EventEmitter {
 
   public hideQueue() { this.showQ = false; }
 
-  public newSongCard(channel: TextChannel, buttons: boolean, omitNext?: boolean) {
-    const embed = Embeds.songEmbed(this.playing, this.paused, omitNext ? null : this.queue.peek());
-    if (_.isNil(this.songCard) || !this.songCard.isEqual(embed) || channel.id !== this.songCard.chanID) {
+  public newSongCard(channel: TextChannel, buttons: boolean, queue?: boolean) {
+    const embed = Embeds.songEmbed(this.playing, this.paused, this.queue.peek());
+    if (_.isNil(this.songCard) || !this.songCard.isEqual(embed) || channel.id !== this.songCard.chanID || queue) {
       this.deleteCards();
-      this.songCard = new EmbedButtonMsg(embed, this.getReactions(omitNext));
+      this.songCard = new EmbedButtonMsg(embed, this.getReactions(queue));
       if (buttons) this.songCard.on('reaction', this.reactionHandler);
-      if (!omitNext) this.createCollector(channel);
+      // if (!queue) this.createCollector(channel);
       return this.songCard.sendCard(channel, buttons);
-    } else if (!this.songCard.hasButtons() && !omitNext) {
+    } else if (!this.songCard.hasButtons()) {
       if (this.queueCard) this.queueCard.delete();
       return this.songCard.addButtons(this.getReactions(false));
     } else if (this.songCard.hasButtons()) {
@@ -71,8 +71,8 @@ export class PlayerCards extends EventEmitter {
     const embed = Embeds.queueEmbed(this.queue);
     if (_.isNil(this.queueCard) || !this.queueCard.isEqual(embed) || channel.id !== this.queueCard.chanID) {
       if (this.queueCard) this.queueCard.delete();
-      if (this.collector) this.collector.stop();
-      this.createCollector(channel);
+      // if (this.collector) this.collector.stop();
+      // this.createCollector(channel);
       this.queueCard = new EmbedButtonMsg(embed, this.getReactions(true));
       this.queueCard.on('reaction', this.reactionHandler);
       return this.queueCard.sendCard(channel, true);
@@ -91,7 +91,7 @@ export class PlayerCards extends EventEmitter {
 
   public deleteCards() {
     let didDelete = false;
-    if (this.collector) this.collector.stop();
+    // if (this.collector) this.collector.stop();
     if (this.songCard) {
       this.songCard.delete();
       this.songCard = null;
@@ -104,7 +104,7 @@ export class PlayerCards extends EventEmitter {
     }
     return didDelete;
   }
-
+  /*
   private createCollector(channel: TextChannel) {
     this.collector = new MessageCollector(channel, (message: Message) => {
       let check = true;
@@ -113,12 +113,12 @@ export class PlayerCards extends EventEmitter {
       return check;
     });
     this.collector.on('collect', message => {
-      setTimeout(() => { message.delete(); }, 3000);
+      //setTimeout(() => { message.delete(); }, 3000);
     })
     this.collector.on('end', () => {
       this.collector = null;
     });
-  }
+  }*/
 
   private reactionHandler = (emoji: string) => {
     const match = _.findKey(PLAYER_REACTIONS, (validEmoji: string) => emoji === validEmoji);

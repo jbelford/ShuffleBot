@@ -4,6 +4,7 @@ import { SoundCloudUsers } from '../models/SoundCloudUsers';
 import { QueuePlayerManager } from '../models/QueuePlayerManager';
 import { PollManager } from '../models/PollManager';
 import { Guilds } from '../models/Guilds';
+import { Users } from '../models/Users';
 
 type Track = {
   title: string;
@@ -20,6 +21,24 @@ type SCUser = {
   guilds: string[];
   favorites: number;
   list: Track[] ;
+};
+
+type GuildUser = {
+  userId: string;
+  playlists: Playlists;
+};
+
+type Playlists = {
+  num: number;
+  list: {
+    [x: string]: Playlist;
+  }
+}
+
+type Playlist = {
+  name: string;
+  size: number;
+  list: Track[];
 };
 
 type BotConfig = {
@@ -43,6 +62,7 @@ type BotConfig = {
   };
   commands: CommandsList;
   emojis: string[];
+  playlistInfo: string;
 };
 
 type Command = {
@@ -70,6 +90,7 @@ type Daos = {
   queuePlayerManager: QueuePlayerManager;
   pollManager: PollManager;
   guilds: Guilds;
+  users: Users;
 };
 
 type PollOption = {

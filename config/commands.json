@@ -268,5 +268,113 @@
                 "level": 1
             }
         }
+    },
+    {
+        "name": "Playlist",
+        "prefix": "pl",
+        "commands": {
+            "new": {
+                "args": {
+                    "text": "<playlistId> \"<name>\"",
+                    "description": [
+                        "<playlistId> ~ Used for identifying the playlist in queries. (Ex. \"pl3\")\n",
+                        "<name> ~ The name of your playlist"
+                    ]
+                },
+                "detail": "Create a new playlist. Only you can edit the playlist but other guild members can use it however they like",
+                "usage": [
+                    "new ssp \"Super sweet playlist\""
+                ],
+                "level": 1
+            },
+            "add": {
+                "args": {
+                    "text": "<playlistId> - (<query> | <specific>)",
+                    "description": [
+                        "<playlistId> ~ The id for the playlist to add the songs to.\n",
+                        "<query> ~ Search terms for a song. Queues the first result from youtube.\n",
+                        "<specific> ~ <user_data>+ &| <yt_url> &| <sc_url>\n",
+                        "\t<user_data> ~ <user_permalink> <range>\n",
+                        "\t\t<user_permalink> ~ SoundCloud user permalink. (Checkout SoundCloud commands)\n",
+                        "\t\t<range> ~ Specifies range of the user's music list to use. Valid syntax is below.\n",
+                        "\t\t\t[X] ~ Means select the first X songs in the list (Most recent favorites)\n",
+                        "\t\t\t[-X] ~ Means select the last X songs in the list (Least recent favorites)\n",
+                        "\t\t\t[X,Y] ~ Select all songs from X to Y (X & Y can also be negative like above)\n",
+                        "\t\t\t[ALL] ~ Select all songs in the list\n",
+                        "\t<yt_url> ~ An url for a YouTube video or playlist\n",
+                        "\t<sc_url> ~ An url for a SoundCloud video or playlist"
+                    ]
+                },
+                "detail": "Add songs to a playlist.",
+                "usage": [
+                    "add ssp - what is love",
+                    "add ssp - jack-belford-1 [all]",
+                    "add ssp - https://www.youtube.com/watch?v=HEXWRTEbj1I"
+                ],
+                "level": 1
+            },
+            "remove": {
+                "args": {
+                    "text": "<playlistId> <range>",
+                    "description": [
+                        "<playlistId> ~ The id for the playlist to remove songs from.\n",
+                        "<range> ~ Specifies range of items in the list to remove. Valid syntax is below.\n",
+                        "\t[X] ~ Means delete song at index X\n",
+                        "\t[-X] ~ Means delete the last X songs from the playlist\n",
+                        "\t[X,Y] ~ Remove all songs from X to Y (X & Y can also be negative like above)\n",
+                        "\t[ALL] ~ Remove all songs in the list"
+                    ]
+                },
+                "detail": "Remove songs from a playlist",
+                "usage": [
+                    "remove ssp [1]",
+                    "remove ssp [-100]",
+                    "remove ssp [5,10]",
+                    "remove ssp [5,0] (Remove 5 and everything after 5)",
+                    "remove ssp [all]"
+                ],
+                "level": 1
+            },
+            "delete": {
+                "args": {
+                    "text": "<playlistId>",
+                    "description": [
+                        "<playlistId> ~ The id for the playlist to delete."
+                    ]
+                },
+                "detail": "Delete a playlist",
+                "usage": [
+                    "delete ssp"
+                ],
+                "level": 1
+            },
+            "list": {
+                "args": {
+                    "text": "{<categoryNum>}",
+                    "description": [
+                        "<categoryNum> ~ The number for a category of playlists."
+                    ]
+                },
+                "detail": "Used for listing the playlists available to you.",
+                "usage": [
+                    "list",
+                    "list 1"
+                ],
+                "level": 1
+            },
+            "info": {
+                "args": {
+                    "text": "<playlistId>",
+                    "description": [
+                        "<playlistId> ~ The id for the playlist to get info about."
+                    ]
+                },
+                "detail": "Show info about a playlist",
+                "usage": [
+                    "info ssp"
+                ],
+                "level": 1
+            }
+        }
     }
 ]
