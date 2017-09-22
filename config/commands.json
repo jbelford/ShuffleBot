@@ -193,7 +193,7 @@
                     "text": "(<query> | <specific>)",
                     "description": [
                         "<query> ~ Search terms for a song. Queues the first result from youtube.\n",
-                        "<specific> ~ <user_data>+ &| <yt_url> &| <sc_url>\n",
+                        "<specific> ~ <user_data>+ &| <yt_url> &| <sc_url> &| <playlist>+\n",
                         "\t<user_data> ~ <user_permalink> <range>\n",
                         "\t\t<user_permalink> ~ SoundCloud user permalink. (Checkout SoundCloud commands)\n",
                         "\t\t<range> ~ Specifies range of the user's music list to use. Valid syntax is below.\n",
@@ -203,6 +203,8 @@
                         "\t\t\t[ALL] ~ Select all songs in the list\n",
                         "\t<yt_url> ~ An url for a YouTube video or playlist\n",
                         "\t<sc_url> ~ An url for a SoundCloud video or playlist\n",
+                        "\t<playlist> ~ pl.<playlistId>\n",
+                        "\t\t<playlistId> ~ An ID for a playlist you wish to add to the queue\n",
                         "Optional Flags:\n",
                         "\t--shuffle ~ Shuffle the new list before adding to the queue\n",
                         "\t--next ~ Add the items to the head of the queue"
@@ -212,7 +214,8 @@
                 "usage": [
                     "add what is love --next",
                     "add jack-belford-1 [all] --shuffle",
-                    "add https://www.youtube.com/watch?v=HEXWRTEbj1I"
+                    "add https://www.youtube.com/watch?v=HEXWRTEbj1I",
+                    "add pl.ssp"
                 ],
                 "level": 1
             },
@@ -293,7 +296,7 @@
                     "description": [
                         "<playlistId> ~ The id for the playlist to add the songs to.\n",
                         "<query> ~ Search terms for a song. Queues the first result from youtube.\n",
-                        "<specific> ~ <user_data>+ &| <yt_url> &| <sc_url>\n",
+                        "<specific> ~ <user_data>+ &| <yt_url> &| <sc_url> &| <playlist>+\n",
                         "\t<user_data> ~ <user_permalink> <range>\n",
                         "\t\t<user_permalink> ~ SoundCloud user permalink. (Checkout SoundCloud commands)\n",
                         "\t\t<range> ~ Specifies range of the user's music list to use. Valid syntax is below.\n",
@@ -302,14 +305,17 @@
                         "\t\t\t[X,Y] ~ Select all songs from X to Y (X & Y can also be negative like above)\n",
                         "\t\t\t[ALL] ~ Select all songs in the list\n",
                         "\t<yt_url> ~ An url for a YouTube video or playlist\n",
-                        "\t<sc_url> ~ An url for a SoundCloud video or playlist"
+                        "\t<sc_url> ~ An url for a SoundCloud video or playlist",
+                        "\t<playlist> ~ pl.<playlistId>\n",
+                        "\t\t<playlistId> ~ An ID for a playlist you wish to add to the queue"
                     ]
                 },
                 "detail": "Add songs to a playlist.",
                 "usage": [
                     "add ssp - what is love",
                     "add ssp - jack-belford-1 [all]",
-                    "add ssp - https://www.youtube.com/watch?v=HEXWRTEbj1I"
+                    "add ssp - https://www.youtube.com/watch?v=HEXWRTEbj1I",
+                    "add ssp - pl.test"
                 ],
                 "level": 1
             },
