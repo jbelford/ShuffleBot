@@ -305,7 +305,7 @@
                         "\t\t\t[X,Y] ~ Select all songs from X to Y (X & Y can also be negative like above)\n",
                         "\t\t\t[ALL] ~ Select all songs in the list\n",
                         "\t<yt_url> ~ An url for a YouTube video or playlist\n",
-                        "\t<sc_url> ~ An url for a SoundCloud video or playlist",
+                        "\t<sc_url> ~ An url for a SoundCloud video or playlist\n",
                         "\t<playlist> ~ pl.<playlistId>\n",
                         "\t\t<playlistId> ~ An ID for a playlist you wish to add to the queue"
                     ]
