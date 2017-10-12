@@ -47,7 +47,7 @@ export function commandDetailsEmbed(name: string, prefix: string, command: Comma
     },
     color : 0x5A54B8,
     description: `${command.detail}\n\n**Arguments**: ${_.isNil(command.args) ? 'None' : `${command.args.text}\n\n${argsDesc}`}` + 
-      `\n\n**Usage**:\n\`\`\`${usage}\`\`\`\nConfused about syntax? Check out this wiki: https://github.com/jbelford/DiscordMusicBot/wiki/Command-Syntax`
+      `\n\n**Usage**:\n\`\`\`${usage}\`\`\`\nConfused about syntax? Check out this wiki: https://github.com/jbelford/ShuffleBot/wiki/Command-Syntax`
   }
 }
 
