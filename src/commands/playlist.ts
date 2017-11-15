@@ -73,28 +73,13 @@ export function addPlaylistCommands(bot: DiscordBot, config: BotConfig, daos: Da
       
       const plId = match[1];
       const paramsText = match[2];
-      let collected: Track[] = yield Utils.getUserList(message, paramsText, scUsers);
-      collected = collected.concat(yield Utils.getYTList(message, paramsText, ytApi));
-      collected = collected.concat(yield Utils.getSCList(message, paramsText, scApi));
-      collected = collected.concat(yield Utils.getPlaylist(message, paramsText, users));
-      if (collected.length === 0) {
-        const songs: Track[] = yield ytApi.searchForVideo(paramsText);
-        const options = songs.map( (song, idx) => {
-          return { option: `${idx + 1}. ${song.title}`, select: [`${idx + 1}`] };
-        });
-        try {
-          const songIdx: number = yield Utils.question(`Select which song you wanted to add:`, options,
-            1000 * 60 * 5, message.author.id, message.channel as TextChannel);
-          collected.push(songs[songIdx]);
-        } catch (e) {
-          return message.reply(e);
-        }
-      }
+      const queryResult = yield Utils.songQuery(message, paramsText, scUsers, users, scApi, ytApi);
+      if (_.isNil(queryResult)) return;
 
-      const err = yield users.addToPlaylist(message.author.id, plId, collected);
+      const err = yield users.addToPlaylist(message.author.id, plId, queryResult.songs);
       if (err) return message.reply(err);
 
-      const nameOrLength = collected.length > 1 ? `${collected.length} songs` : `**${collected[0].title}**`;
+      const nameOrLength = queryResult.songs.length > 1 ? `${queryResult.songs.length} songs` : `**${queryResult.songs[0].title}**`;
       let addedMsg = `Successfully added ${nameOrLength} to the playlist!`;
       message.reply(addedMsg);
     }),

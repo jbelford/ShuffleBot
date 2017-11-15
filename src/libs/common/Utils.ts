@@ -43,16 +43,14 @@ export function requestPromise(uri: string, options?: request.CoreOptions): Prom
 
 export function question(text: string, options: { option: string, select: string[] }[], time: number, userId: string, channel: TextChannel): Promise<number> {
   return new Promise((resolve, reject) => {
-    const msgText = options.reduce((a, b) => `${a}\n${b.option}`, `${text}\n\`\`\``) + '```';
-    channel.send(msgText).then( () => {
+    const msgText = options.reduce((a, b) => `${a}\n${b.option}`, `${text}\n\`\`\``) + '0. Cancel```';
+    channel.send(msgText).then( (sent: Message) => {
       const collector = channel.createMessageCollector( (m: Message) => m.author.id === userId, { time: time });
       collector.on('collect', m => {
         const content = m.content.trim().toLowerCase().split(/\s+/g)[0];
         const idx = options.findIndex( (val) => val.select.includes(content));
-        if (idx >= 0) {
-          collector.stop();
-          return resolve(idx);
-        }
+        collector.stop();
+        return resolve(idx);
       });
       collector.on('end', (collected, reason) => {
         if (reason === 'time') return reject();
@@ -71,7 +69,7 @@ function parseUser(text: string) {
   return userQueries;
 }
 
-export function* getUserList(message: Message, params: string, scUsers: SoundCloudUsers): IterableIterator<Track[]> {
+function* getUserList(message: Message, params: string, scUsers: SoundCloudUsers): IterableIterator<Track[]> {
   const userQueries = parseUser(params);
   let songs: Track[] = [];
   for (const i in userQueries) {
@@ -99,7 +97,7 @@ export function* getUserList(message: Message, params: string, scUsers: SoundClo
   return songs;
 }
 
-export function* getPlaylist(message: Message, params: string, users: Users) {
+function* getPlaylist(message: Message, params: string, users: Users) {
   const plReg = /(^|\s)pl\.([^\s]+)($|\s)/g;
   const plQueries: string[] = [];
   let match: string[];
@@ -120,7 +118,7 @@ export function* getPlaylist(message: Message, params: string, users: Users) {
   return songs;
 }
 
-export function* getYTList(message: Message, params: string, ytApi: YoutubeAPI) {
+function* getYTList(message: Message, params: string, ytApi: YoutubeAPI) {
   const ytQuery = ytApi.parseUrl(params);
   if (!_.isNil(ytQuery)) {
     const notify: Message = yield message.channel.send('Retrieving songs from YouTube url...');
@@ -135,7 +133,7 @@ export function* getYTList(message: Message, params: string, ytApi: YoutubeAPI) 
   return [] as Track[];
 }
 
-export function* getSCList(message: Message, params: string, scApi: SoundCloudAPI) {
+function* getSCList(message: Message, params: string, scApi: SoundCloudAPI) {
   const scQuery = scApi.parseUrl(params);
   if (!_.isNil(scQuery)) {
     const notify: Message = yield message.channel.send('Retrieving songs from SoundCloud url...');
@@ -148,4 +146,30 @@ export function* getSCList(message: Message, params: string, scApi: SoundCloudAP
     }
   }
   return [] as Track[];
+}
+
+export function* songQuery(message: Message, paramsText: string, scUsers: SoundCloudUsers, users: Users, scApi: SoundCloudAPI, ytApi: YoutubeAPI) {
+  const playNext = paramsText.includes('--next');
+  const shuffle = paramsText.includes('--shuffle');
+  let collected: Track[] = yield getUserList(message, paramsText, scUsers);
+  collected = collected.concat(yield getYTList(message, paramsText, ytApi));
+  collected = collected.concat(yield getSCList(message, paramsText, scApi));
+  collected = collected.concat(yield getPlaylist(message, paramsText, users));
+  if (collected.length === 0) {
+    const query = paramsText.replace(/(^|\s)--(shuffle|next)($|\s)/g, '').trim();
+    const songs: Track[] = yield ytApi.searchForVideo(query);
+    const options = songs.map( (song, idx) => { 
+      return { option: `${idx + 1}. ${song.title}`, select: [`${idx + 1}`] }
+    });
+    const songIdx: number = yield question(`Select which song you wanted to add:`, options,
+      1000 * 60 * 5, message.author.id, message.channel as TextChannel);
+    if (songIdx < 0) {
+      message.reply('Invalid selection. Cancelling query.');
+      return null;
+    }
+    collected.push(songs[songIdx]);
+  } else if (shuffle) {
+    collected = shuffleList(collected);
+  }
+  return { songs: collected, nextFlag: playNext, shuffleFlag: shuffle };
 }

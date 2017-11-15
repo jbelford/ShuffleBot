@@ -47,11 +47,11 @@ export class DiscordBot extends EventEmitter {
   private messageHandler = co.wrap(function* (bot: DiscordBot, message: Message) {
     try {
       if (message.author.bot || message.channel.type !== "text") return;
-      else if (!bot.hasSendPermission(message.channel as TextChannel)) 
-        return message.author.send("I do not have permission to send messages there. Contact a server admin to get this resolved.");
       
       const content = message.content.trim().split(/\s+/g);
       if (content[0].charAt(0) !== bot.config.commandToken) return;
+      else if (!bot.hasSendPermission(message.channel as TextChannel)) 
+        return message.author.send("I do not have permission to send messages there. Contact a server admin to get this resolved.");
 
       const cmd = content[0].substr(1);
       let cmdsplit = cmd.split('.');

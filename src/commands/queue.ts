@@ -40,29 +40,12 @@ export function addQueueCommands(bot: DiscordBot, config: BotConfig, daos: Daos)
     'add': co.wrap(function* (message: Message, params: string[]) {
       try {
         if (params.length === 0) return message.reply("You didn't specify what to add!");
-        const playNext = params.includes('--next');
-        const shuffle = params.includes('--shuffle');
-        const paramsText = params.join(' ');
-        let collected: Track[] = yield Utils.getUserList(message, paramsText, scUsers);
-        collected = collected.concat(yield Utils.getYTList(message, paramsText, ytApi));
-        collected = collected.concat(yield Utils.getSCList(message, paramsText, scApi));
-        collected = collected.concat(yield Utils.getPlaylist(message, paramsText, users));
-        if (collected.length === 0) {
-          const query = paramsText.replace(/(^|\s)--(shuffle|next)($|\s)/g, '').trim();
-          const songs: Track[] = yield ytApi.searchForVideo(query);
-          const options = songs.map( (song, idx) => { 
-            return { option: `${idx + 1}. ${song.title}`, select: [`${idx + 1}`] }
-          });
-          const songIdx: number = yield Utils.question(`Select which song you wanted to add:`, options,
-            1000 * 60 * 5, message.author.id, message.channel as TextChannel);
-          collected.push(songs[songIdx]);
-        } else if (shuffle) {
-          collected = Utils.shuffleList(collected);
-        }
-        yield queuePlayerManager.get(message.guild.id).enqueue(collected, playNext);
-        const nameOrLength = collected.length > 1 ? `${collected.length} songs` : `**${collected[0].title}**`;
+        const queryResults = yield Utils.songQuery(message, params.join(' '), scUsers, users, scApi, ytApi);
+        if (_.isNil(queryResults)) return;
+        yield queuePlayerManager.get(message.guild.id).enqueue(queryResults.songs, queryResults.nextFlag);
+        const nameOrLength = queryResults.songs.length > 1 ? `${queryResults.songs.length} songs` : `**${queryResults.songs[0].title}**`;
         let addedMsg = `Successfully added ${nameOrLength} `;
-        addedMsg += playNext ? 'to be played next!' : 'to the queue!';
+        addedMsg += queryResults.nextFlag ? 'to be played next!' : 'to the queue!';
         message.reply(addedMsg);
       } catch (e) {
         message.reply(`Failed to add anything to the queue.`);

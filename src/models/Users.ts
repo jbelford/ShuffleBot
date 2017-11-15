@@ -49,7 +49,7 @@ export class Users {
 
   public *newPlaylist(userId: string, plId: string, name: string) {
     let usedIds = yield this.getUsedPlaylistId();
-    if (usedIds.ids.includes(plId))
+    if (usedIds.ids.some(elem => elem.plId === plId))
       return `The ID \`${plId}\` is already in use! Try a different one!`;
 
     const set: { [x: string]: Playlist } = {};
