@@ -3,7 +3,6 @@
 import * as _           from 'lodash';
 import * as querystring from 'querystring';
 
-import { RequestResponse } from 'request';
 import { requestPromise }  from '../common/Utils';
 import { Track }           from '../../typings';
 
@@ -15,7 +14,7 @@ export class YoutubeAPI {
 
   constructor(private key: string) {}
 
-  parseUrl(text: string) {
+  public parseUrl(text: string) {
     const regYT = /(^|\s)(https?:\/\/)?(www\.)?youtube\.com\/(watch|playlist)\?(v|list)=([^\s&]+)[^\s]*($|\s)/g;
     const match = regYT.exec(text);
     if (!_.isNil(match)) {
@@ -25,7 +24,7 @@ export class YoutubeAPI {
     }
   }
 
-  *getVideos() {
+  public async getVideos() {
     if (_.isNil(this.parseData)) return [];
     const type = this.parseData[0] === 'v' ? 1 : 0;
     const scope = { "get" : ["playlistItems", "videos"], "id" : ["playlistId", "id"], "xtra" : ["&maxResults=50", ""] };
@@ -33,7 +32,7 @@ export class YoutubeAPI {
     const collected: Track[] = [];
     let link = base;
     while (link) {
-      const resp: RequestResponse = yield requestPromise(link);
+      const resp = await requestPromise(link);
       if (resp.statusCode !== 200) throw new Error(`Code: ${resp.statusCode}`);
       const data = JSON.parse(resp.body);
       link = !_.isNil(data.nextPageToken) ? `${base}&pageToken=${data.nextPageToken}` : null;
@@ -53,9 +52,9 @@ export class YoutubeAPI {
     return collected;
   }
 
-  *searchForVideo(searchTerms: string) {
+  public async searchForVideo(searchTerms: string) {
     const query = querystring.stringify({ q : searchTerms });
-    const resp = yield requestPromise(`${this.YT_API}/search?part=snippet&${query}&maxResults=5&type=video&key=${this.key}`);
+    const resp = await requestPromise(`${this.YT_API}/search?part=snippet&${query}&maxResults=5&type=video&key=${this.key}`);
     if (resp.statusCode !== 200) throw new Error(`Code: ${resp.statusCode}`);
     const items = JSON.parse(resp.body).items;
     if (_.isNil(items) || items.length === 0) throw new Error('No songs fit that query');
@@ -69,6 +68,6 @@ export class YoutubeAPI {
       "pic"    : artwork,
       "src"    : "yt"
       };
-    });
+    }) as Track[];
   }
 }

@@ -20,59 +20,59 @@ export class Users {
     return this.collection.find({ userId: { $in: members } }).toArray();
   }
 
-  public *getUser(userId: string) {
+  public async getUser(userId: string) {
     const cacheId = `User:${userId}`;
     let user: GuildUser;
     if (!this.cache.has(cacheId)) {
-      const doc = yield this.collection.findOneAndUpdate({ userId: userId }, { $setOnInsert: this.newUser(userId) }, { upsert: true, returnOriginal: false });
+      const doc = await this.collection.findOneAndUpdate({ userId: userId }, { $setOnInsert: this.newUser(userId) }, { upsert: true, returnOriginal: false });
       user = doc.value;
       this.cache.update(cacheId, user);
     } else user = this.cache.get(cacheId);
     return user;
   }
 
-  public *getUsedPlaylistId() {
+  public async getUsedPlaylistId() {
     if (!this.cache.has(this.playlistIdCacheId)) {
-      const doc = yield this.collection.findOneAndUpdate({ type: this.playlistIdCacheId }, { $setOnInsert: { ids: [] } }, { upsert: true, returnOriginal: false });
+      const doc = await this.collection.findOneAndUpdate({ type: this.playlistIdCacheId }, { $setOnInsert: { ids: [] } }, { upsert: true, returnOriginal: false });
       this.cache.update(this.playlistIdCacheId, doc.value);
     }
     return this.cache.get(this.playlistIdCacheId);
   }
 
-  public *getUserFromPlaylistId(plId: string) {
-    const playlistId = yield this.getUsedPlaylistId();
+  public async getUserFromPlaylistId(plId: string) {
+    const playlistId = await this.getUsedPlaylistId();
     const playlistIdList: { plId: string, user: string }[] = playlistId.ids;
     const item = playlistIdList.find(x => x.plId === plId);
     if (_.isNil(item)) return null;
-    return yield this.getUser(item.user);
+    return await this.getUser(item.user);
   } 
 
-  public *newPlaylist(userId: string, plId: string, name: string) {
-    let usedIds = yield this.getUsedPlaylistId();
+  public async newPlaylist(userId: string, plId: string, name: string) {
+    let usedIds = await this.getUsedPlaylistId();
     if (usedIds.ids.some(elem => elem.plId === plId))
       return `The ID \`${plId}\` is already in use! Try a different one!`;
 
     const set: { [x: string]: Playlist } = {};
     set[`playlists.list.${plId}`] = { name: name, size: 0, list: [] };
-    yield this.addPlaylistId(plId, userId);
-    const doc = yield this.collection.findOneAndUpdate({ userId: userId }, { $inc: { "playlists.num": 1 }, $set: set }, { returnOriginal: false });
+    await this.addPlaylistId(plId, userId);
+    const doc = await this.collection.findOneAndUpdate({ userId: userId }, { $inc: { "playlists.num": 1 }, $set: set }, { returnOriginal: false });
     this.updateUserCache(userId, doc.value);
   }
 
-  public *deletePlaylist(userId: string, plId: string) {
-    let user: GuildUser = yield this.getUser(userId);
+  public async deletePlaylist(userId: string, plId: string) {
+    let user = await this.getUser(userId);
     if (_.isNil(user.playlists.list[plId]))
       return `You have no playlist identified by \`${plId}\``;
 
     const unset = {};
     unset[`playlists.list.${plId}`] = "";
-    yield this.removePlaylistId(plId);
-    const doc = yield this.collection.findOneAndUpdate({ userId: userId }, { $inc: { "playlists.num": -1 }, $unset: unset }, { returnOriginal: false });
+    await this.removePlaylistId(plId);
+    const doc = await this.collection.findOneAndUpdate({ userId: userId }, { $inc: { "playlists.num": -1 }, $unset: unset }, { returnOriginal: false });
     this.updateUserCache(userId, doc.value);
   }
 
-  public *addToPlaylist(userId: string, plId: string, tracks: Track[]) {
-    let user: GuildUser = yield this.getUser(userId);
+  public async addToPlaylist(userId: string, plId: string, tracks: Track[]) {
+    let user = await this.getUser(userId);
     if (_.isNil(user.playlists.list[plId]))
       return `You have no playlist identified by \`${plId}\``;
 
@@ -81,12 +81,12 @@ export class Users {
     playlist.size = playlist.list.length;
     const set = {};
     set[`playlists.list.${plId}`] = playlist;
-    const doc = yield this.collection.findOneAndUpdate({ userId: userId }, { $set: set }, { returnOriginal: false });
+    const doc = await this.collection.findOneAndUpdate({ userId: userId }, { $set: set }, { returnOriginal: false });
     this.updateUserCache(userId, doc.value);
   }
 
-  public *removeFromPlaylist(userId: string, plId: string, idx1: number, idx2?: number) {
-    let user: GuildUser = yield this.getUser(userId);
+  public async removeFromPlaylist(userId: string, plId: string, idx1: number, idx2?: number) {
+    let user = await this.getUser(userId);
     if (_.isNil(user.playlists.list[plId]))
       return `You have no playlist identified by \`${plId}\``;
     
@@ -101,7 +101,7 @@ export class Users {
 
     const set = {};
     set[`playlists.list.${plId}`] = playlist;
-    const doc = yield this.collection.findOneAndUpdate({ userId: userId }, { $set: set }, { returnOriginal: false });
+    const doc = await this.collection.findOneAndUpdate({ userId: userId }, { $set: set }, { returnOriginal: false });
     this.updateUserCache(userId, doc.value);
   }
 
@@ -113,13 +113,13 @@ export class Users {
     this.cache.update(`User:${userId}`, user);
   }
 
-  private *removePlaylistId(plId: string) {
-    const doc = yield this.collection.findOneAndUpdate({ type: this.playlistIdCacheId }, { $pull: { ids: { plId: plId } } }, { upsert: true, returnOriginal: false });
+  private async removePlaylistId(plId: string) {
+    const doc = await this.collection.findOneAndUpdate({ type: this.playlistIdCacheId }, { $pull: { ids: { plId: plId } } }, { upsert: true, returnOriginal: false });
     this.cache.update(this.playlistIdCacheId, doc.value);
   }
 
-  private *addPlaylistId(plId: string, userId: string) {
-    const doc = yield this.collection.findOneAndUpdate({ type: this.playlistIdCacheId }, { $push: { ids: { plId: plId, user: userId } } }, { upsert: true, returnOriginal: false });
+  private async addPlaylistId(plId: string, userId: string) {
+    const doc = await this.collection.findOneAndUpdate({ type: this.playlistIdCacheId }, { $push: { ids: { plId: plId, user: userId } } }, { upsert: true, returnOriginal: false });
     this.cache.update(this.playlistIdCacheId, doc.value);
   }
 }

@@ -13,12 +13,12 @@ export class PollManager {
   constructor(db: Db, private cache: Cache) {
   }
 
-  public createPoll(channel: TextChannel, user: User, question: string, options: PollOption[]) {
+  public async createPoll(channel: TextChannel, user: User, question: string, options: PollOption[]) {
     const cacheId = `Poll:${user.id}`;
     if (!this.cache.has(cacheId) || !this.cache.get(cacheId).active) {
       const poll = new Poll(question, options, user);
       this.cache.update(cacheId, poll, this.ttl);
-      poll.send(channel);
+      await poll.send(channel);
       return true;
     }
     return false;

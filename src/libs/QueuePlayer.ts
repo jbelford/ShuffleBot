@@ -1,6 +1,5 @@
 "use strict"
 
-import * as co      from 'co';
 import * as _       from 'lodash';
 import * as request from 'request';
 import * as ytdl    from 'ytdl-core';
@@ -45,33 +44,33 @@ export class QueuePlayer {
     return _.isNil(this.messageCache) ? null : this.messageCache.channel as TextChannel;
   }
 
-  public enqueue(items: Track[], top: boolean) {
+  public async enqueue(items: Track[], top: boolean) {
     this.refreshCache();
     this.queue.push(items, top);
-    return this.pcMnger.updateCards();
+    await this.pcMnger.updateCards();
   }
 
-  public clear() {
+  public async clear() {
     this.refreshCache();
     this.queue.clear();
     this.pcMnger.hideQueue();
-    return this.pcMnger.updateCards();
+    await this.pcMnger.updateCards();
   }
 
-  public shuffle() {
+  public async shuffle() {
     if (this.queue.size() === 0)
-      return Promise.resolve('There is nothing to shuffle!');
+      return 'There is nothing to shuffle!';
     this.refreshCache();
     this.queue.shuffle();
-    return this.pcMnger.updateCards();
+    await this.pcMnger.updateCards();
   }
 
-  public show(message?: Message) {
+  public async show(message?: Message) {
     if (this.queue.size() === 0) 
-      return Promise.resolve('There is nothing in the queue!');
+      return 'There is nothing in the queue!';
     if (!_.isNil(message) && !message.author.bot) this.messageCache = message;
     this.pcMnger.showQueue();
-    return this.pcMnger.newQueueCard(this.messageCache.channel as TextChannel);
+    await this.pcMnger.newQueueCard(this.messageCache.channel as TextChannel);
   }
 
   public getVolume() {
@@ -87,49 +86,49 @@ export class QueuePlayer {
       this.connection.dispatcher.setVolume(this.volume);
   }
 
-  public join(voiceChannel: VoiceChannel) {
+  public async join(voiceChannel: VoiceChannel) {
     if (this.isInVoiceChannel() && this.connection.channel.id === voiceChannel.id)
       throw new Error('I am already there!');
     else if (voiceChannel.full) 
       throw new Error('That voice channel is full!');
-    return voiceChannel.join().then(connection => this.connection = connection);
+    this.connection = await voiceChannel.join();
   }
 
-  public play(message: Message) {
+  public async play(message: Message) {
     if (this.queue.size() === 0) return 'There is nothing in the queue!';
     else if (this.isStreaming()) return 'I am already streaming!';
-    else if (!this.isInVoiceChannel()) return false;
+    else if (!this.isInVoiceChannel()) return;
     this.messageCache = message;
-    this.messageCache.react('🤘');
+    await this.messageCache.react('🤘');
     // this.messageCache.channel.send(`**I will now start deleting received messages a few seconds after they come in. ` +
     //   `If you don't want me to do this here then use \`${this.config.commandToken}${this.config.commands.find(cat => cat.name === 'Queue').prefix}.show\` ` +
     //   `in another channel to move all music spam there.**`);
     return this.createStream();
   }
 
-  public pauseStream() {
-    if (!this.isStreaming()) return Promise.resolve('I am not playing anything!');
-    else if (this.isPaused()) return Promise.resolve('I am already paused!');
+  public async pauseStream() {
+    if (!this.isStreaming()) return 'I am not playing anything!';
+    else if (this.isPaused()) return 'I am already paused!';
     this.connection.dispatcher.pause();
     this.pcMnger.setPaused(true);
-    return this.pcMnger.updateCards();
+    await this.pcMnger.updateCards();
   }
 
-  public resumeStream() {
-    if (!this.isStreaming()) return Promise.resolve('There is nothing to resume!');
-    else if (!this.isPaused()) return Promise.resolve('I have already started playing!');
+  public async resumeStream() {
+    if (!this.isStreaming()) return 'There is nothing to resume!';
+    else if (!this.isPaused()) return 'I have already started playing!';
     this.refreshCache();
     this.connection.dispatcher.resume();
     this.pcMnger.setPaused(false);
-    return this.pcMnger.updateCards();
+    await this.pcMnger.updateCards();
   }
 
-  public skipSong() {
+  public async skipSong() {
     if (!this.isStreaming()) {
       if (!this.queue.size()) return 'There is nothing to skip!';
       this.refreshCache();
       this.queue.pop();
-      this.pcMnger.updateCards();
+      await this.pcMnger.updateCards();
       return 'I have skipped the next song!';
     }
     this.connection.dispatcher.end('skipped');
@@ -142,9 +141,9 @@ export class QueuePlayer {
     this.connection = null;
   }
 
-  public close(reason?) {
+  public async close(reason?) {
     if (this.pcMnger.deleteCards() && !_.isNil(this.messageCache)) {
-      this.messageCache.channel.send(reason ? reason : "**Closing music session due to inactivity**");
+      await this.messageCache.channel.send(reason ? reason : "**Closing music session due to inactivity**");
     }
     this.stopStream();
   }

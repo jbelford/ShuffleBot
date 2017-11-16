@@ -39,35 +39,30 @@ export class PlayerCards extends EventEmitter {
 
   public hideQueue() { this.showQ = false; }
 
-  public newSongCard(channel: TextChannel, buttons: boolean, queue?: boolean) {
+  public async newSongCard(channel: TextChannel, buttons: boolean, queue?: boolean) {
     const embed = Embeds.songEmbed(this.playing, this.paused, this.queue.peek());
     if (_.isNil(this.songCard) || !this.songCard.isEqual(embed) || channel.id !== this.songCard.chanID || queue) {
       this.deleteCards();
       this.songCard = new EmbedButtonMsg(embed, this.getReactions(queue));
       if (buttons) this.songCard.on('reaction', this.reactionHandler);
       // if (!queue) this.createCollector(channel);
-      return this.songCard.sendCard(channel, buttons);
+      return await this.songCard.sendCard(channel, buttons);
     } else if (!this.songCard.hasButtons()) {
       if (this.queueCard) this.queueCard.delete();
-      return this.songCard.addButtons(this.getReactions(false));
+      return await this.songCard.addButtons(this.getReactions(false));
     } else if (this.songCard.hasButtons()) {
-      return this.songCard.clearButtons();
+      return await this.songCard.clearButtons();
     }
-    return Promise.resolve();
   }
 
-  public newQueueCard(channel: TextChannel) {
+  public async newQueueCard(channel: TextChannel) {
     if (this.playing) {
-      return new Promise(resolve => {
-        this.newSongCard(channel, false, true).then( () => {
-          this.createQueueCard(channel).then(resolve);
-        });
-      });
+      await this.newSongCard(channel, false, true);
     }
-    return this.createQueueCard(channel);
+    await this.createQueueCard(channel);
   }
 
-  private createQueueCard(channel: TextChannel) {
+  private async createQueueCard(channel: TextChannel) {
     const embed = Embeds.queueEmbed(this.queue);
     if (_.isNil(this.queueCard) || !this.queueCard.isEqual(embed) || channel.id !== this.queueCard.chanID) {
       if (this.queueCard) this.queueCard.delete();
@@ -75,18 +70,18 @@ export class PlayerCards extends EventEmitter {
       // this.createCollector(channel);
       this.queueCard = new EmbedButtonMsg(embed, this.getReactions(true));
       this.queueCard.on('reaction', this.reactionHandler);
-      return this.queueCard.sendCard(channel, true);
+      return await this.queueCard.sendCard(channel, true);
     }
-    return this.queueCard.addButtons(this.getReactions(true));
+    return await this.queueCard.addButtons(this.getReactions(true));
   }
 
-  public updateCards() {
+  public async updateCards() {
     if (this.queueCard && this.showQ) {
-      return this.newQueueCard(this.queueCard.channel);
+      return await this.newQueueCard(this.queueCard.channel);
     } else if (this.songCard) {
-      return this.newSongCard(this.songCard.channel, true);
+      return await this.newSongCard(this.songCard.channel, true);
     }
-    return Promise.resolve(this.deleteCards());
+    return this.deleteCards();
   }
 
   public deleteCards() {

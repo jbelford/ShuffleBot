@@ -24,10 +24,10 @@ export class SoundCloudAPI {
     }
   }
 
-  public *getTracks() {
+  public async getTracks() {
     if (_.isNil(this.parseData)) return [];
-    const resp = yield requestPromise(`${this.SC_API}/resolve?url=http://soundcloud.com${this.parseData}&client_id=${this.clientID}`);
-    if (resp.statusCode !== 200) throw new Error(resp.statusCode);
+    const resp = await requestPromise(`${this.SC_API}/resolve?url=http://soundcloud.com${this.parseData}&client_id=${this.clientID}`);
+    if (resp.statusCode !== 200) throw new Error(`${resp.statusCode}`);
     let parseBody = JSON.parse(resp.body);
     if (parseBody.kind !== "track" && parseBody.kind !== "playlist") {
       throw new Error('Not a track or a playlist.');
@@ -46,18 +46,18 @@ export class SoundCloudAPI {
            }) ;
   }
 
-  public *getUserInfo(user_permalink: string): {} {
-    const resp = yield requestPromise(`${this.SC_API}/resolve?url=http://soundcloud.com/${user_permalink}&client_id=${this.clientID}`);
+  public async getUserInfo(user_permalink: string) {
+    const resp = await requestPromise(`${this.SC_API}/resolve?url=http://soundcloud.com/${user_permalink}&client_id=${this.clientID}`);
     if (resp.statusCode !== 200) throw new Error(`Code: ${resp.statusCode}`);
     return JSON.parse(resp.body);
   }
 
-  public *downloadFavorites(user_info: SCUser, eventObj?: EventEmitter, event?: string) {
+  public async downloadFavorites(user_info: SCUser, eventObj?: EventEmitter, event?: string) {
     let next_href = `${this.SC_API}/users/${user_info.id}/favorites?limit=200&linked_partitioning=1&client_id=${this.clientID}`;
     const total = user_info.favorites;
     let list: Track[] = [];
     while (next_href) {
-      const resp = yield requestPromise(next_href);
+      const resp = await requestPromise(next_href);
       if (resp.statusCode !== 200) throw new Error(`Download failed: Code ${resp.statusCode}`);
       const data = JSON.parse(resp.body);
       const favs: Track[] = data.collection.filter( data => data.kind === 'track' && data.streamable).map( data => {

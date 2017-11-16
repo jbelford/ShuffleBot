@@ -2,7 +2,7 @@
 
 import * as _ from 'lodash';
 
-import { Db, Collection, FindAndModifyWriteOpResultObject }    from 'mongodb';
+import { Db, Collection }    from 'mongodb';
 import { EventEmitter }      from 'events';
 import { SoundCloudAPI }     from '../libs/api/SoundCloudAPI';
 import { Cache }             from '../libs/data/Cache';
@@ -20,14 +20,14 @@ export class SoundCloudUsers extends EventEmitter {
     this.scApi = new SoundCloudAPI(config.tokens.soundcloud);
   }
 
-  public *addUser(user_permalink: string, timestamp: number, guildId: string) {
+  public async addUser(user_permalink: string, timestamp: number, guildId: string): Promise<Error> {
     try {
-      const info = yield this.scApi.getUserInfo(user_permalink);
+      const info = await this.scApi.getUserInfo(user_permalink);
       if (_.isNil(info.public_favorites_count) || info.public_favorites_count === 0) 
-        return "That user has no favorites!";
+        throw new Error("That user has no favorites!");
 
       this.emit(`start ${timestamp}`, info);
-      const user_info: SCUser = yield this.scApi.downloadFavorites({
+      const user_info = await this.scApi.downloadFavorites({
         "permalink" : info.permalink,
         "username"  : info.username,
         "id"        : info.id,
@@ -41,7 +41,7 @@ export class SoundCloudUsers extends EventEmitter {
       if (this.cache.needsUpdate(cachedId, user_info)) {
         this.cache.update(cachedId, user_info);
         delete user_info.guilds;
-        doc = yield this.collection.updateOne({ permalink : user_info.permalink }, { $addToSet: { guilds: guildId }, $set: user_info }, { upsert : true });
+        doc = await this.collection.updateOne({ permalink : user_info.permalink }, { $addToSet: { guilds: guildId }, $set: user_info }, { upsert : true });
         this.cache.removeIf(`${this.collectionName}:${guildId}`);
       } else {
         doc = this.cache.get(cachedId);
@@ -53,28 +53,28 @@ export class SoundCloudUsers extends EventEmitter {
     }
   }
 
-  public *listUsers(guildId: string): IterableIterator<SCUser[]> {
+  public async listUsers(guildId: string) {
     const cachedId = `${this.collectionName}:${guildId}`;
-    if (this.cache.has(cachedId)) return this.cache.get(cachedId);
-    const userList: SCUser[] = yield this.collection.find({ guilds: { $elemMatch: { $eq: guildId }}}, { "list" : 0 }).toArray() as any;
+    if (this.cache.has(cachedId)) return this.cache.get(cachedId) as SCUser[];
+    const userList: SCUser[] = await this.collection.find({ guilds: { $elemMatch: { $eq: guildId }}}, { "list" : 0 }).toArray() as any;
     this.cache.update(cachedId, userList);
     return userList;
   }
 
-  public *getUser(user_permalink: string): IterableIterator<SCUser> {
+  public async getUser(user_permalink: string) {
     const cachedId = `${this.collectionName}:${user_permalink}`;
-    if (this.cache.has(cachedId)) return this.cache.get(cachedId);
-    const user: SCUser = yield this.collection.findOne({ permalink : user_permalink }) as any;
+    if (this.cache.has(cachedId)) return this.cache.get(cachedId) as SCUser;
+    const user: SCUser = await this.collection.findOne({ permalink : user_permalink }) as any;
     this.cache.update(cachedId, user);
     return user;
   }
 
-  public *removeUser(userquery: string, guildId: string) {
+  public async removeUser(userquery: string, guildId: string) {
     const cachedId = `${this.collectionName}:${guildId}`;
     if (this.cache.has(cachedId) && this.cache.get(cachedId).every((user: SCUser) => user.permalink !== userquery && user.username !== userquery)) {
       return false;
     }
-    const doc: FindAndModifyWriteOpResultObject = yield this.collection.findOneAndUpdate({ $or: [ { permalink: userquery }, { username: userquery }] }, { $pullAll: { guilds: [ guildId ] } });
+    const doc = await this.collection.findOneAndUpdate({ $or: [ { permalink: userquery }, { username: userquery }] }, { $pullAll: { guilds: [ guildId ] } });
     if (doc.lastErrorObject.updatedExisting) {
       if (doc.value.guilds.length === 1) this.collection.deleteOne({ _id: doc.value._id });
       this.cache.removeIf(cachedId);

@@ -1,4 +1,3 @@
-import * as co      from 'co';
 import * as request from 'request';
 import * as _       from 'lodash';
 
@@ -27,10 +26,9 @@ export function sleep(millis: number) {
   });
 }
 
-export const reactSequential: (message: Message, emojis: EmojiIdentifierResolvable[]) => Promise<{}> = 
-    co.wrap(function* (message: Message, emojis: EmojiIdentifierResolvable[]) {
-  for (const i in emojis) yield message.react(emojis[i]);
-});
+export async function reactSequential(message: Message, emojis: EmojiIdentifierResolvable[]) {
+  for (const i in emojis) await message.react(emojis[i]);
+}
 
 export function requestPromise(uri: string, options?: request.CoreOptions): Promise<request.RequestResponse> {
   return new Promise((resolve, reject) => {
@@ -43,7 +41,7 @@ export function requestPromise(uri: string, options?: request.CoreOptions): Prom
 
 export function question(text: string, options: { option: string, select: string[] }[], time: number, userId: string, channel: TextChannel): Promise<number> {
   return new Promise((resolve, reject) => {
-    const msgText = options.reduce((a, b) => `${a}\n${b.option}`, `${text}\n\`\`\``) + '0. Cancel```';
+    const msgText = options.reduce((a, b) => `${a}\n${b.option}`, `${text}\n\`\`\``) + '\n\n0. Cancel```';
     channel.send(msgText).then( (sent: Message) => {
       const collector = channel.createMessageCollector( (m: Message) => m.author.id === userId, { time: time });
       collector.on('collect', m => {
@@ -69,12 +67,12 @@ function parseUser(text: string) {
   return userQueries;
 }
 
-function* getUserList(message: Message, params: string, scUsers: SoundCloudUsers): IterableIterator<Track[]> {
+async function getUserList(message: Message, params: string, scUsers: SoundCloudUsers) {
   const userQueries = parseUser(params);
   let songs: Track[] = [];
   for (const i in userQueries) {
     const query = userQueries[i];
-    const user: SCUser = yield scUsers.getUser(query[0]) as any;
+    const user: SCUser = await scUsers.getUser(query[0]);
     if (_.isNil(user)) {
       message.channel.send(`The user ${query[0]} isn't recognized.`);
       continue;
@@ -97,7 +95,7 @@ function* getUserList(message: Message, params: string, scUsers: SoundCloudUsers
   return songs;
 }
 
-function* getPlaylist(message: Message, params: string, users: Users) {
+async function getPlaylist(message: Message, params: string, users: Users) {
   const plReg = /(^|\s)pl\.([^\s]+)($|\s)/g;
   const plQueries: string[] = [];
   let match: string[];
@@ -107,64 +105,64 @@ function* getPlaylist(message: Message, params: string, users: Users) {
   let songs: Track[] = [];
   for (const i in plQueries) {
     const plId = plQueries[i];
-    const user: GuildUser = yield users.getUserFromPlaylistId(plId);
+    const user: GuildUser = await users.getUserFromPlaylistId(plId);
     if (_.isNil(user)) {
-      message.channel.send(`The playlist \`${plId}\` isn't recognized.`);
+      await message.channel.send(`The playlist \`${plId}\` isn't recognized.`);
       continue;
     }
-    message.channel.send(`Adding tracks from playlist \`${user.playlists.list[plId].name}\`... Done`);
+    await message.channel.send(`Adding tracks from playlist \`${user.playlists.list[plId].name}\`... Done`);
     songs = songs.concat(user.playlists.list[plId].list);
   }
   return songs;
 }
 
-function* getYTList(message: Message, params: string, ytApi: YoutubeAPI) {
+async function getYTList(message: Message, params: string, ytApi: YoutubeAPI) {
   const ytQuery = ytApi.parseUrl(params);
   if (!_.isNil(ytQuery)) {
-    const notify: Message = yield message.channel.send('Retrieving songs from YouTube url...');
+    const notify: Message = await message.channel.send('Retrieving songs from YouTube url...') as Message;
       try {
-        const videos: Track[] = yield ytApi.getVideos();
-        yield notify.edit(`${notify.content} Done`);
+        const videos: Track[] = await ytApi.getVideos();
+        await notify.edit(`${notify.content} Done`);
         return videos;
       } catch (e) {
-        yield notify.edit(`${notify.content} Failed. ${e}`);
+        await notify.edit(`${notify.content} Failed. ${e}`);
       }
   }
   return [] as Track[];
 }
 
-function* getSCList(message: Message, params: string, scApi: SoundCloudAPI) {
+async function getSCList(message: Message, params: string, scApi: SoundCloudAPI) {
   const scQuery = scApi.parseUrl(params);
   if (!_.isNil(scQuery)) {
-    const notify: Message = yield message.channel.send('Retrieving songs from SoundCloud url...');
+    const notify: Message = await message.channel.send('Retrieving songs from SoundCloud url...') as Message;
     try {
-      const tracks: Track[] = yield scApi.getTracks();
-      yield notify.edit(`${notify.content} Done`);
+      const tracks: Track[] = await scApi.getTracks();
+      await notify.edit(`${notify.content} Done`);
       return tracks;
     } catch (e) {
-      yield notify.edit(`${notify.content} Failed. ${e}`);
+      await notify.edit(`${notify.content} Failed. ${e}`);
     }
   }
   return [] as Track[];
 }
 
-export function* songQuery(message: Message, paramsText: string, scUsers: SoundCloudUsers, users: Users, scApi: SoundCloudAPI, ytApi: YoutubeAPI) {
+export async function songQuery(message: Message, paramsText: string, scUsers: SoundCloudUsers, users: Users, scApi: SoundCloudAPI, ytApi: YoutubeAPI) {
   const playNext = paramsText.includes('--next');
   const shuffle = paramsText.includes('--shuffle');
-  let collected: Track[] = yield getUserList(message, paramsText, scUsers);
-  collected = collected.concat(yield getYTList(message, paramsText, ytApi));
-  collected = collected.concat(yield getSCList(message, paramsText, scApi));
-  collected = collected.concat(yield getPlaylist(message, paramsText, users));
+  let collected: Track[] = await getUserList(message, paramsText, scUsers);
+  collected = collected.concat(await getYTList(message, paramsText, ytApi));
+  collected = collected.concat(await getSCList(message, paramsText, scApi));
+  collected = collected.concat(await getPlaylist(message, paramsText, users));
   if (collected.length === 0) {
     const query = paramsText.replace(/(^|\s)--(shuffle|next)($|\s)/g, '').trim();
-    const songs: Track[] = yield ytApi.searchForVideo(query);
+    const songs: Track[] = await ytApi.searchForVideo(query);
     const options = songs.map( (song, idx) => { 
       return { option: `${idx + 1}. ${song.title}`, select: [`${idx + 1}`] }
     });
-    const songIdx: number = yield question(`Select which song you wanted to add:`, options,
+    const songIdx = await question(`Select which song you wanted to add:`, options,
       1000 * 60 * 5, message.author.id, message.channel as TextChannel);
     if (songIdx < 0) {
-      message.reply('Invalid selection. Cancelling query.');
+      await message.reply(songIdx === -1 ? 'Cancelled query.' : 'Invalid selection. Cancelling query.');
       return null;
     }
     collected.push(songs[songIdx]);

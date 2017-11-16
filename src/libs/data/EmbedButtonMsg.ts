@@ -1,7 +1,6 @@
 "use strict"
 
 import * as _     from 'lodash';
-import * as co    from 'co';
 import * as Utils from '../common/Utils';
 
 import { EventEmitter } from 'events';
@@ -49,23 +48,20 @@ export class EmbedButtonMsg extends EventEmitter {
   }
 
   // Adds emoji reactions to the message
-  public addButtons(reactions?: string[]) {
-    return new Promise((resolve, reject) => {
-      if (reactions) {
-        if (this.buttons && JSON.stringify(this.reactions) === JSON.stringify(reactions)) 
-          return resolve();
-        this.reactions = reactions;
-      } else if (this.buttons) return resolve();
-      this.clearButtons().then(() => {
-        this.buttons = true;
-        this.createCollector();
-        Utils.reactSequential(this.src, this.reactions).then(resolve)
-      });
-    });
+  public async addButtons(reactions?: string[]) {
+    if (reactions) {
+      if (this.buttons && JSON.stringify(this.reactions) === JSON.stringify(reactions)) 
+        return;
+      this.reactions = reactions;
+    } else if (this.buttons) return;
+    await this.clearButtons();
+    this.buttons = true;
+    this.createCollector();
+    await Utils.reactSequential(this.src, this.reactions);
   }
   
   public clearButtons() {
-    if (!this.buttons) return Promise.resolve(null);
+    if (!this.buttons) return Promise.resolve(null) as Promise<Message>;
     this.buttons = false;
     this.collector.stop();
     return this.src.clearReactions();

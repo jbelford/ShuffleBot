@@ -19,15 +19,15 @@ export class Guilds {
     this.scInterval = config.sc.interval * 1000 * 60 * 60;
   }
 
-  *canDownload(guildId: string) {
-    const doc = yield this.collection.findOne({ guildId: guildId });
+  public async canDownload(guildId: string) {
+    const doc = await this.collection.findOne({ guildId: guildId });
     if (_.isNil(doc)) return true;
     const regen = Math.floor((Date.now() - doc.scdl.timestamp) / this.scInterval);
     if (regen > 0) this.collection.update({ _id: doc._id }, { $set: { "scdl.num": Math.max(doc.scdl.num - regen, 0) } });
     return doc.scdl.num - regen < this.scLim;
   }
 
-  updateDownload(guildId: string) {
+  public updateDownload(guildId: string) {
     return this.collection.updateOne({ guildId: guildId }, { $set: { "scdl.timestamp": Date.now() }, $inc: { "scdl.num": 1 } }, { upsert: true });
   }
 }

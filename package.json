@@ -1,6 +1,6 @@
 {
   "name": "discordbot",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "SoundCloud music bot for Discord",
   "main": "build/app",
   "types": "build/app",
@@ -9,7 +9,6 @@
     "@types/mongodb": "^2.2.9",
     "@types/request": "^2.0.0",
     "bufferutil": "^3.0.0",
-    "co": "^4.6.0",
     "discord.js": "11.2.1",
     "erlpack": "github:hammerandchisel/erlpack",
     "ffmpeg-binaries": "^3.2.2-3",
@@ -28,7 +27,7 @@
     "run": "node ./build/app.js"
   },
   "engines": {
-    "node": ">=6.0.0"
+    "node": ">=8.0.0"
   },
   "engineStrict": true,
   "author": "Jack Belford",
