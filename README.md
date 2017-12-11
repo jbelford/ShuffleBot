@@ -1,17 +1,20 @@
 # **ShuffleBot**
 A focused bot for playing music in voice channels on Discord.
 
+![Spotify Player](https://github.com/jbelford/ShuffleBot/tree/master/src/public/img/SpotifyPlayer.PNG)
+
 ### [Invite ShuffleBot to your server](https://discordapp.com/oauth2/authorize?client_id=270697360714235904&permissions=70745152&scope=bot)
 
 ## General Features
-* Play queued songs in voice channels
-* Songs can be requested via queries as well as SoundCloud or YouTube URL's 
-* Playlists can be added to the queue (SoundCloud & YouTube)
-* Can download SoundCloud users' favorites & add to queue on the fly
-* Emoji reactions used as buttons to control player
-* Manage and create custom playlists
+* **NEW** Import Spotify playlists!
+* Instantly queue up songs / playlists from SoundCloud or Youtube!
+* Make your own playlists and be able to use them wherever ShuffleBot is!
+* Sync your SoundCloud favorites and queue them up in any order you like!
+* Player reactive to changes and controlled by emojis
 
 ## Music Queue Features
+* Spotify user? Import any playlist easily: ```$pl.import retro https://open.spotify.com/user/spotify/playlist/37i9dQZF1DXdLEN7aqioXM```
+* Then go ahead and queue it up shuffled using your custom identifier! ```$q.add pl.retro --shuffle```
 * Songs can be added via URLs from SoundCloud or YouTube (ex: ```$q.add https://www.youtube.com/watch?v=HEXWRTEbj1I```). If URL is a playlist then all songs will be added to the queue
 * Songs can also be added by entering search terms (ex: ```$q.add what is love```)
 * Songs can also be enqueued from saved SoundCloud favorites (ex: ```$q.add jack-belford-1 [ALL]```)

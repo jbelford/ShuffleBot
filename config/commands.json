@@ -383,10 +383,10 @@
             },
             "import": {
                 "args": {
-                    "text": "<playlistId> <spotifyPlaylistUri>",
+                    "text": "<playlistId> <spotifyPlaylist>",
                     "description": [
                         "<playlistId> ~ Choose an ID for the playlist you are importing\n",
-                        "<spotifyPlaylistUri> ~ Can be found by selecting \"Copy Spotify URI\" under the \"Share\" dropdown for a Spotify playlist"
+                        "<spotifyPlaylist> ~ Either the playlist link or URI. Can be found in the \"Share\" dropdown within the Spotify client."
                     ]
                 },
                 "detail": "Import a Spotify playlist",

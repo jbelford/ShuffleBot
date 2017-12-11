@@ -132,8 +132,8 @@ export function addPlaylistCommands(bot: DiscordBot, config: BotConfig, daos: Da
     'import': async (message, params, level) => {
       if (params.length === 0) return message.reply('Missing parameter: <playlistId>');
       else if (params[0].length > 7) return message.reply('Playlist ID exceeds maximum character length of `7`!');
-      else if (params.length === 1) return message.reply('Missing parameter: <spotifyPlaylistUri>');
-      const uriDetails = /user:(.+):playlist:(.+)/.exec(params[1]);
+      else if (params.length === 1) return message.reply('Missing parameter: <spotifyPlaylist>');
+      const uriDetails = /user[\/:](.+)[\/:]playlist[\/:](.+)/.exec(params[1]);
       if (_.isNil(uriDetails)) return message.reply('Invalid URI provided.');
 
       const pending = await message.channel.send('Retrieving Spotify playlist... (This may take a moment)') as Message;
