@@ -1,15 +1,13 @@
 "use strict"
 
 import * as _       from 'lodash';
-import * as request from 'request';
-import * as ytdl    from 'ytdl-core';
 
 import { VoiceChannel, VoiceConnection, Message, TextChannel } from 'discord.js';
-import { Readable }    from 'stream';
 import { Cache }       from './data/Cache';
 import { Queue }       from './data/Queue';
 import { PlayerCards } from './PlayerCards';
-import { Track, BotConfig }       from '../typings';
+import { Track }       from '../typings';
+import { StreamService } from './services/StreamService';
 
 export class QueuePlayer {
 
@@ -20,7 +18,7 @@ export class QueuePlayer {
   public messageCache : Message;
   private volume      : number = 0.5;
 
-  constructor(private cache: Cache, private cacheId: string, private ttl: number, private config: BotConfig) {
+  constructor(private cache: Cache, private cacheId: string, private ttl: number, private streamService: StreamService) {
     this.queue = new Queue();
     this.pcMnger = new PlayerCards(this.queue);
     this.pcMnger.on('reaction', action => {
@@ -164,41 +162,39 @@ export class QueuePlayer {
     return this.isStreaming() && this.connection.dispatcher.paused;
   }
 
-  private getStream(track: Track): Readable {
-    if (track.src === 'sc') return request(`${track.url}?client_id=${this.config.tokens.soundcloud}`) as any;
-    return ytdl(track.url, { filter : 'audioonly' });
-  }
-
   private createStream() {
     this.refreshCache();
     this.nowPlaying = this.queue.pop();
-    const stream = this.getStream(this.nowPlaying);
-    this.pcMnger.setPlaying(this.nowPlaying);
-    this.pcMnger.newSongCard(this.messageCache.channel as TextChannel, true);
-    this.connection.playStream(stream, { seek: 0, volume: this.volume, passes: 1 });
-    this.connection.dispatcher.once('start', () => console.log(`Streaming: ${this.nowPlaying.title}`));
-    this.connection.dispatcher.once('end', reason => {
-      this.pcMnger.deleteCards();
-      this.pcMnger.setPaused(false);
-      this.pcMnger.hideQueue();
-      this.messageCache.channel.send(`Played: *${this.nowPlaying.title}*`);
-      if (reason !== 'forceStop') {
-        if (this.connection.channel.members.every( member => member.deaf || member.user.bot )) {
-          this.messageCache.channel.send('Stopping stream since no one is listening');
-          this.connection.disconnect();
-        } else if (this.queue.size() > 0) {
-          console.log('Creating next stream');
-          return setTimeout(() => this.createStream(), 50);
+    this.streamService.getTrackStream(this.nowPlaying, (stream, track) => {
+      if (!_.isNil(track))
+        this.nowPlaying = track;
+      this.pcMnger.setPlaying(this.nowPlaying);
+      this.pcMnger.newSongCard(this.messageCache.channel as TextChannel, true);
+      this.connection.playStream(stream, { seek: 0, volume: this.volume, passes: 1 });
+      this.connection.dispatcher.once('start', () => console.log(`Streaming: ${this.nowPlaying.title}`));
+      this.connection.dispatcher.once('end', reason => {
+        this.pcMnger.deleteCards();
+        this.pcMnger.setPaused(false);
+        this.pcMnger.hideQueue();
+        this.messageCache.channel.send(`Played: *${this.nowPlaying.title}*`);
+        if (reason !== 'forceStop') {
+          if (this.connection.channel.members.every( member => member.deaf || member.user.bot )) {
+            this.messageCache.channel.send('Stopping stream since no one is listening');
+            this.connection.disconnect();
+          } else if (this.queue.size() > 0) {
+            console.log('Creating next stream');
+            return setTimeout(() => this.createStream(), 50);
+          }
         }
-      }
-      this.pcMnger.setPlaying(null);
-      this.messageCache.reply('Music stream ended');
-      this.messageCache = null;
-      console.log('Ended music stream');
+        this.pcMnger.setPlaying(null);
+        this.messageCache.reply('Music stream ended');
+        this.messageCache = null;
+        console.log('Ended music stream');
+      });
+      this.connection.dispatcher.on('error', e => {
+        console.log(`${this.cacheId} encountered error`, e);
+      })
     });
-    this.connection.dispatcher.on('error', e => {
-      console.log(`${this.cacheId} encountered error`, e);
-    })
     return 'Music stream started';
   }
 }

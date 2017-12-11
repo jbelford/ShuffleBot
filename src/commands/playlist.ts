@@ -10,46 +10,46 @@ import { YoutubeAPI }           from '../libs/api/YoutubeAPI';
 import { SoundCloudAPI }        from '../libs/api/SoundCloudAPI';
 import { Message, TextChannel, Attachment } from 'discord.js';
 import { Readable } from 'stream';
+import { SpotifyAPI } from '../libs/api/SpotifyAPI';
 
 export function addPlaylistCommands(bot: DiscordBot, config: BotConfig, daos: Daos) {
   const users = daos.users;
   const scUsers = daos.soundCloudUsers;
   const ytApi = new YoutubeAPI(config.tokens.youtube);
   const scApi = new SoundCloudAPI(config.tokens.soundcloud);
+  const spotifyApi = new SpotifyAPI(config.tokens.spotify.clientId, config.tokens.spotify.clientSecret);
 
   const commands: { [x: string]: (message: Message, params: string[], level: number) => any } = {
 
-    'list': async (message: Message, params: string[], level: number) => {
+    'list': async (message, params, level) => {
       if (params.length === 0 || isNaN(parseInt(params[0])))
         return await message.channel.send({ embed: Embeds.playlistCategoriesEmbed(message.guild.name, config.commandToken) });
       const idx = parseInt(params[0]);
       if (idx === 1) {
         const botUser = await users.getUser(bot.client.user.id);
-        if (botUser.playlists.num === 0) return await message.channel.send(`**I am still working on those! ;)**`);
+        if (botUser.playlists.length === 0) return await message.channel.send(`**I am still working on those! ;)**`);
         return await message.channel.send({ embed: Embeds.userPlaylistsEmbed(bot.client.user, botUser.playlists, false) });
       } else if (idx === 2) {
         const members = message.guild.members.array().map( member => member.id );
         const playlistUsers = await users.getList(members);
-        const playlists = playlistUsers.reduce((a, b) => {
-          a.num += b.playlists.num;
-          _.forEach(b.playlists.list, (playlist, key) => {
-            a.list[key] = playlist;
-            a.list[key].owner = message.guild.members.get(b.userId).displayName;
-          })
-          return a;
-        }, { num: 0, list: {} });
-        if (playlists.num === 0) return await message.channel.send('**No one on this server has playlists yet!**');
+        const playlists = playlistUsers
+          .reduce((a, b) => a.concat(b.playlists), [])
+          .map(x => {
+            x.owner = message.guild.members.get(x.userId).displayName;
+            return x;
+          });
+        if (playlists.length === 0) return await message.channel.send('**No one on this server has playlists yet!**');
         return await message.channel.send({ embed: Embeds.guildPlaylistsEmbed(message.guild, playlists) });
       } else if (idx === 3) {
         const guildUser = await users.getUser(message.author.id);
-        if (guildUser.playlists.num === 0)
+        if (guildUser.playlists.length === 0)
           return await message.reply(`You don't have any playlists yet! Check out \`${config.commandToken}help pl.new\` to get started!`);
         return await message.channel.send({ embed: Embeds.userPlaylistsEmbed(message.author, guildUser.playlists, true) });
       }
       await message.reply('Nothing corresponds to that index!');
     },
     
-    'new': async (message: Message, params: string[], level: number) => {
+    'new': async (message, params, level) => {
       const paramsReg = /^\s*([^\s]+)\s+"([^"]+)"\s*$/g
       const match = paramsReg.exec(params.join(' '));
       if (_.isNil(match))
@@ -63,7 +63,7 @@ export function addPlaylistCommands(bot: DiscordBot, config: BotConfig, daos: Da
       await message.reply(err ? err : `The playlist **${name}** has been created and can be identified using \`${plId}\``);
     },
 
-    'add': async (message: Message, params: string[], level: number) => {
+    'add': async (message, params, level) => {
       const paramsReg = /^\s*([^\s]+)\s+-\s+(.+)\s*/g
       const match = paramsReg.exec(params.join(' '));
       if (_.isNil(match))
@@ -82,7 +82,7 @@ export function addPlaylistCommands(bot: DiscordBot, config: BotConfig, daos: Da
       await message.reply(addedMsg);
     },
 
-    'remove': async (message: Message, params: string[], level: number) => {
+    'remove': async (message, params, level) => {
       const paramsReg = /^\s*([^\s]+)\s+\[\s*(-?\d+(\s*,\s*-?\d+)?|ALL)\s*]\s*$/gi;
       const match = paramsReg.exec(params.join(' '));
       if (_.isNil(match))
@@ -103,18 +103,18 @@ export function addPlaylistCommands(bot: DiscordBot, config: BotConfig, daos: Da
       await message.reply(err ? err : "I have removed those songs from the playlist!");
     },
 
-    'delete': async (message: Message, params: string[], level: number) => {
+    'delete': async (message, params, level) => {
       if (params.length === 0) return await message.reply('Missing parameters: <playlistId>');
       const err = await users.deletePlaylist(message.author.id, params[0]);
       await message.reply(err ? err : `Your playlist identified by \`${params[0]}\` has been successfully removed.`);
     },
 
-    'info': async (message: Message, params: string[], level: number) => {
+    'info': async (message, params, level) => {
       if (params.length === 0) return message.reply('Missing parameter: <playlistId>');
       const user = await users.getUserFromPlaylistId(params[0]);
       if (_.isNil(user)) return await message.reply('That playlist does not exist!');
 
-      const playlist = user.playlists.list[params[0]];
+      const playlist = user.playlists.find(x => x.key === params[0]);
       let playlistInfo = config.playlistInfo;
       playlistInfo = playlistInfo.replace(/%TITLE%/g, playlist.name);
       playlistInfo = playlistInfo.replace(/%DETAIL%/g, `Owner: ${bot.client.users.get(user.userId).username} ~ Songs: ${playlist.size} ~ ID: ${params[0]}`);
@@ -127,6 +127,27 @@ export function addPlaylistCommands(bot: DiscordBot, config: BotConfig, daos: Da
 
       const attachment = new Attachment(readable, `${playlist.name}.html`);
       await message.channel.send('Here ya go!', attachment);
+    },
+
+    'import': async (message, params, level) => {
+      if (params.length === 0) return message.reply('Missing parameter: <playlistId>');
+      else if (params[0].length > 7) return message.reply('Playlist ID exceeds maximum character length of `7`!');
+      else if (params.length === 1) return message.reply('Missing parameter: <spotifyPlaylistUri>');
+      const uriDetails = /user:(.+):playlist:(.+)/.exec(params[1]);
+      if (_.isNil(uriDetails)) return message.reply('Invalid URI provided.');
+
+      const pending = await message.channel.send('Retrieving Spotify playlist... (This may take a moment)') as Message;
+      const playlist = await spotifyApi.getPlaylist(uriDetails[1], uriDetails[2]);
+      if (_.isNil(playlist)) return message.reply('Failed to fetch tracks.');
+
+      let err = await users.newPlaylist(message.author.id, params[0], playlist.name);
+      if (err) return await message.reply(err);
+
+      err = await users.addToPlaylist(message.author.id, params[0], playlist.tracks);
+      if (err) return await message.reply(err);
+
+      await pending.edit(`Retrieving Spotify playlist... Done!`);
+      await message.reply(`The Spotify playlist \`${playlist.name}\` has been imported and can be identified with \`${params[0]}\`!`)
     }
   }
 

@@ -6,13 +6,18 @@ import { PollManager } from '../models/PollManager';
 import { Guilds } from '../models/Guilds';
 import { Users } from '../models/Users';
 
-type Track = {
+interface Track {
   title: string;
   url: string;
   poster: string;
   pic: string;
   src: string;
-};
+}
+
+interface SpotifyTrack extends Track {
+  loaded: boolean;
+  trackId: string;
+}
 
 type SCUser = {
   permalink: string;
@@ -25,18 +30,12 @@ type SCUser = {
 
 type GuildUser = {
   userId: string;
-  playlists: Playlists;
+  playlists: Playlist[];
 };
-
-type Playlists = {
-  num: number;
-  list: {
-    [x: string]: Playlist;
-  }
-}
 
 type Playlist = {
   name: string;
+  key: string;
   size: number;
   list: Track[];
 };
@@ -48,6 +47,10 @@ type BotConfig = {
     discord: string;
     soundcloud: string;
     youtube: string;
+    spotify: {
+      clientId: string;
+      clientSecret: string;
+    }
   };
   commandToken: string;
   botPerms: PermissionResolvable[];

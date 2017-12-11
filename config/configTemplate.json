@@ -4,7 +4,11 @@
     "tokens" : {
         "discord" : "",
         "soundcloud" : "",
-        "youtube" : ""
+        "youtube" : "",
+        "spotify" : {
+            "clientId" : "",
+            "clientSecret" : ""
+        }
     },
     "commandToken" : "$",
     "botPerms": [

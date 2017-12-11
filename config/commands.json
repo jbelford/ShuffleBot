@@ -380,6 +380,20 @@
                     "info ssp"
                 ],
                 "level": 1
+            },
+            "import": {
+                "args": {
+                    "text": "<playlistId> <spotifyPlaylistUri>",
+                    "description": [
+                        "<playlistId> ~ Choose an ID for the playlist you are importing\n",
+                        "<spotifyPlaylistUri> ~ Can be found by selecting \"Copy Spotify URI\" under the \"Share\" dropdown for a Spotify playlist"
+                    ]
+                },
+                "detail": "Import a Spotify playlist",
+                "usage": [
+                    "import retro spotify:user:spotify:playlist:37i9dQZF1DXdLEN7aqioXM"
+                ],
+                "level": 1
             }
         }
     }

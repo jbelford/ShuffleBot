@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 
 import { Queue } from '../data/Queue';
-import { Command, CommandsList, Track, SCUser, PollOption, CommandModule, Playlists, GuildUser } from '../../typings';
+import { Command, CommandsList, Track, SCUser, PollOption, CommandModule, GuildUser, Playlist } from '../../typings';
 import { RichEmbedOptions, ClientUser, Guild, Message, User } from 'discord.js';
 
 export function commandCategoriesEmbed(cmdList: CommandsList, cmdTok: string): RichEmbedOptions {
@@ -64,7 +64,7 @@ export function playlistCategoriesEmbed(serverName: string, cmdTok: string): Ric
   };
 }
 
-export function userPlaylistsEmbed(user: User, playlists: Playlists, personal: boolean): RichEmbedOptions {
+export function userPlaylistsEmbed(user: User, playlists: Playlist[], personal: boolean): RichEmbedOptions {
   const embed: RichEmbedOptions = {
     color: 0xc6e20d,
     author: {
@@ -74,14 +74,14 @@ export function userPlaylistsEmbed(user: User, playlists: Playlists, personal: b
     description: '```'
   };
   let i = 1;
-  _.forEach(playlists.list, (playlist, key) => {
-    embed.description += `${i++}: ${playlist.name}\n\tID: ${key}\tSONGS: ${playlist.size}\n`;
+  _.forEach(playlists, playlist => {
+    embed.description += `${i++}: ${playlist.name}\n\tID: ${playlist.key}\tSONGS: ${playlist.size}\n`;
   });
   embed.description += '```';
   return embed;
 }
 
-export function guildPlaylistsEmbed(guild: Guild, playlists: any): RichEmbedOptions {
+export function guildPlaylistsEmbed(guild: Guild, playlists: any[]): RichEmbedOptions {
   const embed: RichEmbedOptions = {
     color: 0xc6e20d,
     author: {
@@ -91,8 +91,8 @@ export function guildPlaylistsEmbed(guild: Guild, playlists: any): RichEmbedOpti
     description: 'This is the list of playlists from all the users across the server:\n```'
   };
   let i = 1;
-  _.forEach(playlists.list, (playlist: any, key) => {
-    embed.description += `${i++}: ${playlist.name}\n\tID: ${key}\tSONGS: ${playlist.size}\tOWNER: ${playlist.owner}\n\n`;
+  _.forEach(playlists, playlist => {
+    embed.description += `${i++}: ${playlist.name}\n\tID: ${playlist.key}\tSONGS: ${playlist.size}\tOWNER: ${playlist.owner}\n\n`;
   });
   embed.description += '```';
   return embed;
@@ -169,14 +169,19 @@ export function pollResultsEmbed(question: string, options: PollOption[], messag
 
 
 export function songEmbed(playing: Track, paused: boolean, next?: Track) {
+  const color = { sc: 0xff7700, yt: 0xbb0000, spot: 0x84bd00 }
+  const thumbnail = {
+    sc: 'https://www.drupal.org/files/project-images/soundcloud-logo.png',
+    yt: 'https://images.vexels.com/media/users/3/137425/isolated/preview/f2ea1ded4d037633f687ee389a571086-youtube-icon-logo-by-vexels.png',
+    spot: 'https://image.flaticon.com/icons/png/512/226/226773.png'
+  }
   const embed: RichEmbedOptions = {
     title : `**${playing.title}**`,
     description : `**${playing.poster}**`,
-    color : playing.src === "sc" ? 0xff7700 : 0xbb0000,
+    color : color[playing.src],
     image : { url : playing.pic },
     thumbnail : {
-      url : playing.src === "sc" ? 'https://www.drupal.org/files/project-images/soundcloud-logo.png' :
-            'https://images.vexels.com/media/users/3/137425/isolated/preview/f2ea1ded4d037633f687ee389a571086-youtube-icon-logo-by-vexels.png'
+      url : thumbnail[playing.src]
     },
     author : {
       name : paused ? "Paused" : "Now Playing",

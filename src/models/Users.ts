@@ -4,7 +4,7 @@ import * as _ from 'lodash';
 
 import { Db, Collection } from 'mongodb';
 import { Cache } from '../libs/data/Cache';
-import { BotConfig, Playlist, GuildUser, Track } from '../typings';
+import { BotConfig, Playlist, GuildUser, Track, SpotifyTrack } from '../typings';
 
 export class Users {
 
@@ -31,6 +31,10 @@ export class Users {
     return user;
   }
 
+  public clearUserFromCache(userId: string) {
+    this.cache.removeIf(`User:${userId}`);
+  }
+
   public async getUsedPlaylistId() {
     if (!this.cache.has(this.playlistIdCacheId)) {
       const doc = await this.collection.findOneAndUpdate({ type: this.playlistIdCacheId }, { $setOnInsert: { ids: [] } }, { upsert: true, returnOriginal: false });
@@ -52,45 +56,51 @@ export class Users {
     if (usedIds.ids.some(elem => elem.plId === plId))
       return `The ID \`${plId}\` is already in use! Try a different one!`;
 
-    const set: { [x: string]: Playlist } = {};
-    set[`playlists.list.${plId}`] = { name: name, size: 0, list: [] };
     await this.addPlaylistId(plId, userId);
-    const doc = await this.collection.findOneAndUpdate({ userId: userId }, { $inc: { "playlists.num": 1 }, $set: set }, { returnOriginal: false });
+    const doc = await this.collection.findOneAndUpdate(
+      { userId: userId },
+      { $addToSet: { playlists: { name: name, key: plId, size: 0, list: [] } } },
+      { upsert: true, returnOriginal: false }
+    );
     this.updateUserCache(userId, doc.value);
   }
 
   public async deletePlaylist(userId: string, plId: string) {
     let user = await this.getUser(userId);
-    if (_.isNil(user.playlists.list[plId]))
+    if (!user.playlists.some(x => x.key === plId))
       return `You have no playlist identified by \`${plId}\``;
 
-    const unset = {};
-    unset[`playlists.list.${plId}`] = "";
     await this.removePlaylistId(plId);
-    const doc = await this.collection.findOneAndUpdate({ userId: userId }, { $inc: { "playlists.num": -1 }, $unset: unset }, { returnOriginal: false });
+    const doc = await this.collection.findOneAndUpdate(
+      { userId: userId },
+      { $pull: { playlists: { key: plId } } },
+      { returnOriginal: false }
+    );
     this.updateUserCache(userId, doc.value);
   }
 
   public async addToPlaylist(userId: string, plId: string, tracks: Track[]) {
     let user = await this.getUser(userId);
-    if (_.isNil(user.playlists.list[plId]))
+    if (!user.playlists.some(x => x.key === plId))
       return `You have no playlist identified by \`${plId}\``;
 
-    const playlist = user.playlists.list[plId];
+    const playlist = user.playlists.find(x => x.key === plId);
     playlist.list = playlist.list.concat(tracks);
     playlist.size = playlist.list.length;
-    const set = {};
-    set[`playlists.list.${plId}`] = playlist;
-    const doc = await this.collection.findOneAndUpdate({ userId: userId }, { $set: set }, { returnOriginal: false });
+    const doc = await this.collection.findOneAndUpdate(
+      { userId: userId, playlists: { $elemMatch: { key: plId }} },
+      { $set: { 'playlists.$': playlist } },
+      { returnOriginal: false }
+    );
     this.updateUserCache(userId, doc.value);
   }
 
   public async removeFromPlaylist(userId: string, plId: string, idx1: number, idx2?: number) {
     let user = await this.getUser(userId);
-    if (_.isNil(user.playlists.list[plId]))
+    if (!user.playlists.some(x => x.key === plId))
       return `You have no playlist identified by \`${plId}\``;
     
-    const playlist = user.playlists.list[plId];
+    const playlist = user.playlists.find(x => x.key === plId);
     const lengthPrior = playlist.list.length;
     if (_.isNil(idx2)) playlist.list.splice(idx1, 1);
     else if (idx2 === 0) playlist.list.splice(idx1, playlist.list.length - idx1);
@@ -99,14 +109,38 @@ export class Users {
     if (playlist.size === lengthPrior)
       return `Query resulted in no tracks being removed!`;
 
-    const set = {};
-    set[`playlists.list.${plId}`] = playlist;
-    const doc = await this.collection.findOneAndUpdate({ userId: userId }, { $set: set }, { returnOriginal: false });
+    const doc = await this.collection.findOneAndUpdate(
+      { userId: userId, playlists: { $elemMatch: { key: plId }} },
+      { $set: { 'playlists.$': playlist } },
+      { returnOriginal: false }
+    );
     this.updateUserCache(userId, doc.value);
   }
 
+  public async updateAllUsersSpotifyTrack(track: SpotifyTrack) {
+    const bulkOperations = await this.collection.find(
+        { playlists: { $elemMatch: { list: { $elemMatch: { trackId: track.trackId } } } } }
+      ).map( (user: GuildUser) => {
+        user.playlists = user.playlists.map( playlist => {
+          const idx = playlist.list.findIndex(x => (x as SpotifyTrack).trackId === track.trackId);
+          if (idx !== -1)
+            playlist.list[idx] = track;
+          return playlist;
+        });
+        return {
+          replaceOne: {
+            filter: {
+              userId: user.userId
+            },
+            replacement: user
+          }
+        };
+      }).toArray();
+    await this.collection.bulkWrite(bulkOperations);
+  }
+
   private newUser(userId: string): GuildUser {
-    return { userId: userId, playlists: { num: 0, list: {}}};
+    return { userId: userId, playlists: []};
   }
 
   private updateUserCache(userId: string, user: GuildUser) {
