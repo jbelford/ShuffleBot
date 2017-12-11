@@ -2,7 +2,7 @@
 
 import * as _       from 'lodash';
 
-import { VoiceChannel, VoiceConnection, Message, TextChannel } from 'discord.js';
+import { VoiceChannel, VoiceConnection, Message, TextChannel, MessageReaction } from 'discord.js';
 import { Cache }       from './data/Cache';
 import { Queue }       from './data/Queue';
 import { PlayerCards } from './PlayerCards';
@@ -21,7 +21,11 @@ export class QueuePlayer {
   constructor(private cache: Cache, private cacheId: string, private ttl: number, private streamService: StreamService) {
     this.queue = new Queue();
     this.pcMnger = new PlayerCards(this.queue);
-    this.pcMnger.on('reaction', action => {
+    this.pcMnger.on('reaction', (reaction: MessageReaction, action) => {
+      if (this.isInVoiceChannel()) {
+        const badUsers = reaction.users.filter(x => !x.bot && _.isNil(this.connection.channel.members.get(x.id)));
+        if (badUsers.size > 0) return badUsers.forEach(x => reaction.remove(x));
+      }
       switch (action) {
         case 'shuffle': this.shuffle(); break;
         case 'queue'  : this.show(); break;
@@ -165,9 +169,7 @@ export class QueuePlayer {
   private createStream() {
     this.refreshCache();
     this.nowPlaying = this.queue.pop();
-    this.streamService.getTrackStream(this.nowPlaying, (stream, track) => {
-      if (!_.isNil(track))
-        this.nowPlaying = track;
+    this.streamService.getTrackStream(this.nowPlaying, (stream) => {
       this.pcMnger.setPlaying(this.nowPlaying);
       this.pcMnger.newSongCard(this.messageCache.channel as TextChannel, true);
       this.connection.playStream(stream, { seek: 0, volume: this.volume, passes: 1 });

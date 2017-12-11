@@ -119,7 +119,7 @@ export class Users {
 
   public async updateAllUsersSpotifyTrack(track: SpotifyTrack) {
     const bulkOperations = await this.collection.find(
-        { playlists: { $elemMatch: { list: { $elemMatch: { trackId: track.trackId } } } } }
+        { playlists: { $elemMatch: { list: { $elemMatch: { trackId: track.trackId, loaded: false } } } } }
       ).map( (user: GuildUser) => {
         user.playlists = user.playlists.map( playlist => {
           const idx = playlist.list.findIndex(x => (x as SpotifyTrack).trackId === track.trackId);
@@ -127,6 +127,7 @@ export class Users {
             playlist.list[idx] = track;
           return playlist;
         });
+        this.clearUserFromCache(user.userId);
         return {
           replaceOne: {
             filter: {

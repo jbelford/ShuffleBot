@@ -72,7 +72,7 @@ export class EmbedButtonMsg extends EventEmitter {
     this.collector = this.src.createReactionCollector((reaction: MessageReaction, user: User) => {
       return this.reactions.includes(reaction.emoji.name) && !user.bot
     });
-    this.collector.on('collect', (reaction: MessageReaction) => this.emit('reaction', reaction.emoji.name));
+    this.collector.on('collect', (reaction: MessageReaction) => this.emit('reaction', reaction));
   }
 
   public delete() {

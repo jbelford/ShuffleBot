@@ -16,11 +16,11 @@ export class StreamService {
     this.ytApi = new YoutubeAPI(config.tokens.youtube);
   }
 
-  public getTrackStream(track: Track, cb: (stream: Readable, track?: Track) => void) {
+  public getTrackStream(track: Track, cb: (stream: Readable) => void) {
     if (track.src === 'sc') return cb(request(`${track.url}?client_id=${this.config.tokens.soundcloud}`) as any);
     else if (track.src === 'spot' && !(track as SpotifyTrack).loaded) {
       return this.loadAndUpdateTrack(track as SpotifyTrack).then( (newTrack) => {
-        cb(ytdl(newTrack.url, { filter : 'audioonly' }), newTrack);
+        cb(ytdl(newTrack.url, { filter : 'audioonly' }));
       });
     }
     return cb(ytdl(track.url, { filter : 'audioonly' }));

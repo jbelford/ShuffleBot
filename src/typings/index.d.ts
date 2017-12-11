@@ -63,6 +63,10 @@ type BotConfig = {
   music: {
     limit: number;
   };
+  playlists: {
+    idLength: number;
+    nameLength: number;
+  }
   commands: CommandsList;
   emojis: string[];
   playlistInfo: string;

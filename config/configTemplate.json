@@ -34,5 +34,9 @@
     "invite": true,
     "music": {
         "limit": 10
+    },
+    "playlists": {
+        "idLength": 15,
+        "nameLength": 25
     }
 }

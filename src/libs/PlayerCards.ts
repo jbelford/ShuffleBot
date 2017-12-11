@@ -7,7 +7,7 @@ import { Track }            from '../typings';
 import { Queue }            from './data/Queue';
 import { EmbedButtonMsg }   from './data/EmbedButtonMsg';
 import { EventEmitter }     from 'events';
-import { TextChannel, Message, MessageCollector } from 'discord.js';
+import { TextChannel, Message, MessageCollector, MessageReaction } from 'discord.js';
 
 const PLAYER_REACTIONS: { [key: string]: string } = {
   shuffle : '🔀',
@@ -115,9 +115,9 @@ export class PlayerCards extends EventEmitter {
     });
   }*/
 
-  private reactionHandler = (emoji: string) => {
-    const match = _.findKey(PLAYER_REACTIONS, (validEmoji: string) => emoji === validEmoji);
-    if (!_.isNil(match)) this.emit('reaction', match);
+  private reactionHandler = async (reaction: MessageReaction) => {
+    const match = _.findKey(PLAYER_REACTIONS, (validEmoji: string) => reaction.emoji.name === validEmoji);
+    if (!_.isNil(match)) this.emit('reaction', reaction, match);
   }
   
   private getReactions(showShuffle: boolean) {

@@ -27,7 +27,7 @@ export function addPlaylistCommands(bot: DiscordBot, config: BotConfig, daos: Da
       const idx = parseInt(params[0]);
       if (idx === 1) {
         const botUser = await users.getUser(bot.client.user.id);
-        if (botUser.playlists.length === 0) return await message.channel.send(`**I am still working on those! ;)**`);
+        if (botUser.playlists.length === 0) return await message.channel.send(`**I am still working on those!**`);
         return await message.channel.send({ embed: Embeds.userPlaylistsEmbed(bot.client.user, botUser.playlists, false) });
       } else if (idx === 2) {
         const members = message.guild.members.array().map( member => member.id );
@@ -56,9 +56,11 @@ export function addPlaylistCommands(bot: DiscordBot, config: BotConfig, daos: Da
         return await message.reply(`Incorrect usage! The format is: \`${config.commandToken}pl.new <playlistId> "<name>"\``);
 
       const plId = match[1];
-      if (plId.length > 7) return await message.reply(`Playlist ID exceeds maximum character length of \`7\`!`)
+      if (plId.length > config.playlists.idLength)
+        return await message.reply(`Playlist ID exceeds maximum character length of \`${config.playlists.idLength}\`!`)
       const name = match[2].trim().replace(/\s+/g, ' ');
-      if (name.length > 25) return await message.reply(`Name exceeds maximum character length of \`25\`!`);
+      if (name.length > config.playlists.nameLength) 
+        return await message.reply(`Name exceeds maximum character length of \`${config.playlists.nameLength}\`!`);
       const err = await users.newPlaylist(message.author.id, plId, name);
       await message.reply(err ? err : `The playlist **${name}** has been created and can be identified using \`${plId}\``);
     },
@@ -130,9 +132,12 @@ export function addPlaylistCommands(bot: DiscordBot, config: BotConfig, daos: Da
     },
 
     'import': async (message, params, level) => {
-      if (params.length === 0) return message.reply('Missing parameter: <playlistId>');
-      else if (params[0].length > 7) return message.reply('Playlist ID exceeds maximum character length of `7`!');
-      else if (params.length === 1) return message.reply('Missing parameter: <spotifyPlaylist>');
+      if (params.length === 0) 
+        return await message.reply('Missing parameter: <playlistId>');
+      else if (params[0].length > config.playlists.idLength) 
+        return await message.reply(`Playlist ID exceeds maximum character length of \`${config.playlists.idLength}\`!`);
+      else if (params.length === 1)
+        return await message.reply('Missing parameter: <spotifyPlaylist>');
       const uriDetails = /user[\/:](.+)[\/:]playlist[\/:](.+)/.exec(params[1]);
       if (_.isNil(uriDetails)) return message.reply('Invalid URI provided.');
 
