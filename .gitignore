@@ -3,4 +3,3 @@ build/
 .vscode/
 config/config.json
 shard.ts
-package-lock.json

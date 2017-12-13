@@ -33,11 +33,12 @@ export function addPlaylistCommands(bot: DiscordBot, config: BotConfig, daos: Da
         const members = message.guild.members.array().map( member => member.id );
         const playlistUsers = await users.getList(members);
         const playlists = playlistUsers
-          .reduce((a, b) => a.concat(b.playlists), [])
-          .map(x => {
-            x.owner = message.guild.members.get(x.userId).displayName;
-            return x;
-          });
+          .reduce((a, b) => a.concat(
+            b.playlists.map(x => {
+              x['owner'] = message.guild.members.get(b.userId).displayName;
+              return x;
+            })
+          ), []);
         if (playlists.length === 0) return await message.channel.send('**No one on this server has playlists yet!**');
         return await message.channel.send({ embed: Embeds.guildPlaylistsEmbed(message.guild, playlists) });
       } else if (idx === 3) {

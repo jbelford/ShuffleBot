@@ -256,7 +256,13 @@
                 "level": 1
             },
             "remove": {
-                "text": "<user_permalink>",
+                "args": {
+                    "text": "<user_permalink>",
+                    "description": [
+                        "<user_permalink> ~ Found in the URL for a soundcloud user\n",
+                        "\t(Ex: https://soundcloud.com/THIS_VALUE)"
+                    ]
+                },
                 "detail": "Removes a SoundCloud user profile from the server.",
                 "usage": [
                     "remove"
