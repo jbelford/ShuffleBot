@@ -9,7 +9,6 @@ import { Track }           from '../../typings';
 export class YoutubeAPI {
 
   private YT_API = "https://www.googleapis.com/youtube/v3";
-  private url: string;
   private parseData: string[];
 
   constructor(private key: string) {}
@@ -17,11 +16,12 @@ export class YoutubeAPI {
   public parseUrl(text: string) {
     const regYT = /(^|\s)(https?:\/\/)?(www\.)?youtube\.com\/(watch|playlist)\?(v|list)=([^\s&]+)[^\s]*($|\s)/g;
     const match = regYT.exec(text);
-    if (!_.isNil(match)) {
-      this.parseData = match.splice(5, 2);
-      this.url = match[0];
-      return this.url;
+    if (_.isNil(match)) {
+      this.parseData = null;
+      return null;
     }
+    this.parseData = match.splice(5, 2);
+    return match[0];
   }
 
   public async getVideos() {
@@ -52,9 +52,15 @@ export class YoutubeAPI {
     return collected;
   }
 
-  public async searchForVideo(searchTerms: string) {
-    const query = querystring.stringify({ q : searchTerms });
-    const resp = await requestPromise(`${this.YT_API}/search?part=snippet&${query}&maxResults=5&type=video&key=${this.key}`);
+  public async searchForVideo(searchTerms: string, maxResults?: number) {
+    const query = querystring.stringify({
+      part : 'snippet',
+      q : searchTerms,
+      maxResults : _.isNil(maxResults) ? 5 : maxResults,
+      type : 'video',
+      key : this.key
+    });
+    const resp = await requestPromise(`${this.YT_API}/search?${query}`);
     if (resp.statusCode !== 200) throw new Error(`Code: ${resp.statusCode}`);
     const items = JSON.parse(resp.body).items;
     if (_.isNil(items) || items.length === 0) throw new Error('No songs fit that query');

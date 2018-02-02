@@ -12,7 +12,7 @@
             "node_modules/@types"
          ],
         "outDir": "build",
-        "rootDir": "src"
+        "rootDirs": ["src", "test"]
     },
     "include": [
         "typings/index.d.ts",

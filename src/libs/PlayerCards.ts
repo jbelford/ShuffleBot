@@ -46,12 +46,12 @@ export class PlayerCards extends EventEmitter {
       this.songCard = new EmbedButtonMsg(embed, this.getReactions(queue));
       if (buttons) this.songCard.on('reaction', this.reactionHandler);
       // if (!queue) this.createCollector(channel);
-      return await this.songCard.sendCard(channel, buttons);
+      await this.songCard.sendCard(channel, buttons);
     } else if (!this.songCard.hasButtons()) {
       if (this.queueCard) this.queueCard.delete();
-      return await this.songCard.addButtons(this.getReactions(false));
+      await this.songCard.addButtons(this.getReactions(false));
     } else if (this.songCard.hasButtons()) {
-      return await this.songCard.clearButtons();
+      await this.songCard.clearButtons();
     }
   }
 
@@ -72,7 +72,7 @@ export class PlayerCards extends EventEmitter {
       this.queueCard.on('reaction', this.reactionHandler);
       return await this.queueCard.sendCard(channel, true);
     }
-    return await this.queueCard.addButtons(this.getReactions(true));
+    await this.queueCard.addButtons(this.getReactions(true));
   }
 
   public async updateCards() {
@@ -81,7 +81,7 @@ export class PlayerCards extends EventEmitter {
     } else if (this.songCard) {
       return await this.newSongCard(this.songCard.channel, true);
     }
-    return this.deleteCards();
+    this.deleteCards();
   }
 
   public deleteCards() {

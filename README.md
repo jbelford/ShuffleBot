@@ -4,6 +4,8 @@ A focused bot for playing music in voice channels on Discord.
 ![Spotify Player](https://raw.githubusercontent.com/jbelford/ShuffleBot/master/src/public/img/SpotifyPlayer.PNG)
 
 ### [Invite ShuffleBot to your server](https://discordapp.com/oauth2/authorize?client_id=270697360714235904&permissions=70745152&scope=bot)
+## OR
+### [Try out the bot here](https://discord.gg/MbbEAeH)
 
 ## General Features
 * **NEW** Import Spotify playlists!

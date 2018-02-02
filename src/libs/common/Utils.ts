@@ -1,12 +1,21 @@
 import * as request from 'request';
 import * as _       from 'lodash';
+import * as fs      from 'fs';
 
 import { SoundCloudAPI }   from '../api/SoundCloudAPI';
 import { YoutubeAPI }      from '../api/YoutubeAPI';
-import { Track, SCUser, GuildUser }   from '../../typings';
+import { Track, SCUser, GuildUser, BotConfig }   from '../../typings';
 import { Users }           from '../../models/Users';
 import { SoundCloudUsers } from '../../models/SoundCloudUsers';
 import { TextChannel, Message, EmojiIdentifierResolvable } from 'discord.js';
+
+export function loadConfig(): BotConfig {
+  const config = JSON.parse(fs.readFileSync(`./config/config.json`, 'utf8'));
+  config.commands = JSON.parse(fs.readFileSync(`./config/commands.json`, 'utf8'));
+  config.emojis = JSON.parse(fs.readFileSync(`./config/emojis.json`, 'utf8'));
+  config.playlistInfo = fs.readFileSync(`./src/views/playlistInfo.html`, 'utf8');
+  return config;
+}
 
 export function shuffleList<T>(list: T[]) {
   for (let i = 0; i < list.length; i++) {
@@ -75,18 +84,18 @@ async function getUserList(message: Message, params: string, scUsers: SoundCloud
     const query = userQueries[i];
     const user: SCUser = await scUsers.getUser(query[0]);
     if (_.isNil(user)) {
-      message.channel.send(`The user ${query[0]} isn't recognized.`);
+      await message.channel.send(`The user ${query[0]} isn't recognized.`);
       errors = true;
       continue;
     }
-    message.channel.send(`Adding ${user.username}'s tracks... Done`);
+    await message.channel.send(`Adding ${user.username}'s tracks... Done`);
     if (query[1].toLowerCase() === "all") {
       songs = songs.concat(user.list);
       continue;
     }
     const range = query[1].split(',').map( x => parseInt(x) );
     if (range.some( x => isNaN(x) )) {
-      message.channel.send(`The query for user ${user.username} isn't valid.`);
+      await message.channel.send(`The query for user ${user.username} isn't valid.`);
       errors = true;
     } else if (range.length > 1) {
       songs = songs.concat(user.list.slice(range[0], range[1] === 0 ? user.list.length : range[1]));

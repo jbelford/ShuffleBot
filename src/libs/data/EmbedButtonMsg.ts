@@ -33,14 +33,9 @@ export class EmbedButtonMsg extends EventEmitter {
   }
 
   // Send the card to the channel
-  public sendCard(channel: TextChannel, buttons: boolean) {
-    return new Promise((resolve, reject) => {
-      channel.send({ embed: this.embed }).then( (message: Message) => {
-        this.src = message;
-        if (!buttons) return resolve();
-        this.addButtons().then(() => resolve());
-      });
-    });
+  public async sendCard(channel: TextChannel, buttons: boolean) {
+    this.src = await channel.send({ embed: this.embed }) as Message;
+    if (buttons) await this.addButtons();
   }
 
   public isEqual(newEmbed: RichEmbedOptions) {
@@ -60,11 +55,11 @@ export class EmbedButtonMsg extends EventEmitter {
     await Utils.reactSequential(this.src, this.reactions);
   }
   
-  public clearButtons() {
-    if (!this.buttons) return Promise.resolve(null) as Promise<Message>;
+  public async clearButtons() {
+    if (!this.buttons) return;
     this.buttons = false;
     this.collector.stop();
-    return this.src.clearReactions();
+    await this.src.clearReactions();
   }
 
   // Create a collector to listen for reactions to the message
@@ -75,8 +70,8 @@ export class EmbedButtonMsg extends EventEmitter {
     this.collector.on('collect', (reaction: MessageReaction) => this.emit('reaction', reaction));
   }
 
-  public delete() {
-    if (this.collector) this.collector.stop();
-    if (this.src) this.src.delete();
+  public async delete() {
+    if (this.collector && !this.collector.ended) this.collector.stop();
+    if (this.src) await this.src.delete();
   }
 }

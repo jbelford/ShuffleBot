@@ -9,7 +9,6 @@ import { EventEmitter }  from 'events';
 export class SoundCloudAPI {
 
   private SC_API = "https://api.soundcloud.com";
-  private url: string;
   private parseData: string;
 
   constructor(private clientID: string) {}
@@ -17,11 +16,12 @@ export class SoundCloudAPI {
   public parseUrl(text: string) {
     const regSC = /(^|\s)(https?:\/\/)?(www\.)?soundcloud\.com(\/[^\s]+)($|\s)/g;
     const match = regSC.exec(text);
-    if (!_.isNil(match)) {
-      this.parseData = match[4];
-      this.url = match[0];
-      return this.url;
+    if (_.isNil(match)) {
+      this.parseData = null;
+      return null;
     }
+    this.parseData = match[4];
+    return match[0];
   }
 
   public async getTracks() {

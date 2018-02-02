@@ -1,11 +1,10 @@
 "use strict"
 
-import * as fs from 'fs';
-
 import { MongoClient, Db } from 'mongodb';
 import { BotConfig }       from './typings';
 import { DiscordBot }      from './libs/DiscordBot';
 import { Cache }           from './libs/data/Cache';
+import { loadConfig }      from './libs/common/Utils';
 
 import * as models      from './models';
 import * as commands    from './commands';
@@ -28,8 +27,4 @@ async function startBot(config: BotConfig) {
   }
 }
 
-const config = JSON.parse(fs.readFileSync(`./config/config.json`, 'utf8'));
-config.commands = JSON.parse(fs.readFileSync(`./config/commands.json`, 'utf8'));
-config.emojis = JSON.parse(fs.readFileSync(`./config/emojis.json`, 'utf8'));
-config.playlistInfo = fs.readFileSync(`./src/views/playlistInfo.html`, 'utf8');
-startBot(config);
+startBot(loadConfig());
