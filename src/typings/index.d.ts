@@ -1,9 +1,8 @@
-import { ObjectID } from 'mongodb';
-import { PermissionResolvable, WSEventType, Emoji } from 'discord.js';
-import { SoundCloudUsers } from '../models/SoundCloudUsers';
-import { QueuePlayerManager } from '../models/QueuePlayerManager';
-import { PollManager } from '../models/PollManager';
+import { PermissionResolvable, WSEventType } from 'discord.js';
 import { Guilds } from '../models/Guilds';
+import { PollManager } from '../models/PollManager';
+import { QueuePlayerManager } from '../models/QueuePlayerManager';
+import { SoundCloudUsers } from '../models/SoundCloudUsers';
 import { Users } from '../models/Users';
 
 interface Track {
@@ -25,7 +24,7 @@ type SCUser = {
   id: number;
   guilds: string[];
   favorites: number;
-  list: Track[] ;
+  list: Track[];
 };
 
 type GuildUser = {
@@ -53,7 +52,7 @@ type BotConfig = {
     }
   };
   commandToken: string;
-  botPerms: PermissionResolvable[];
+  botPerms: PermissionResolvable;
   disabledEvents: WSEventType[];
   sc: {
     limit: number;

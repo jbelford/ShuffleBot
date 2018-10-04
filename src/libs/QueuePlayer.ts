@@ -1,22 +1,22 @@
 "use strict"
 
-import * as _       from 'lodash';
-
-import { VoiceChannel, VoiceConnection, Message, TextChannel, MessageReaction } from 'discord.js';
-import { Cache }       from './data/Cache';
-import { Queue }       from './data/Queue';
+import { Message, MessageReaction, TextChannel, VoiceChannel, VoiceConnection } from 'discord.js';
+import * as _ from 'lodash';
+import { Track } from '../typings';
+import { Cache } from './data/Cache';
+import { Queue } from './data/Queue';
 import { PlayerCards } from './PlayerCards';
-import { Track }       from '../typings';
 import { StreamService } from './services/StreamService';
+
 
 export class QueuePlayer {
 
-  private nowPlaying  : Track;
-  private queue       : Queue<Track>;
-  private connection  : VoiceConnection;
-  private pcMnger     : PlayerCards;
-  public messageCache : Message;
-  private volume      : number = 0.5;
+  private nowPlaying: Track;
+  private queue: Queue<Track>;
+  private connection: VoiceConnection;
+  private pcMnger: PlayerCards;
+  public messageCache: Message;
+  private volume: number = 0.5;
 
   constructor(private cache: Cache, private cacheId: string, private ttl: number, private streamService: StreamService) {
     this.queue = new Queue();
@@ -28,11 +28,11 @@ export class QueuePlayer {
       }
       switch (action) {
         case 'shuffle': this.shuffle(); break;
-        case 'queue'  : this.show(); break;
-        case 'pause'  : this.pauseStream(); break;
-        case 'resume' : this.resumeStream(); break;
-        case 'skip'   : this.skipSong(); break;
-        case 'stop'   : this.stopStream(); break;
+        case 'queue': this.show(); break;
+        case 'pause': this.pauseStream(); break;
+        case 'resume': this.resumeStream(); break;
+        case 'skip': this.skipSong(); break;
+        case 'stop': this.stopStream(); break;
         default:
       }
     });
@@ -68,7 +68,7 @@ export class QueuePlayer {
   }
 
   public async show(message?: Message) {
-    if (this.queue.size() === 0) 
+    if (this.queue.size() === 0)
       return 'There is nothing in the queue!';
     if (!_.isNil(message) && !message.author.bot) this.messageCache = message;
     this.pcMnger.showQueue();
@@ -84,14 +84,14 @@ export class QueuePlayer {
       return 'Invalid volume! Choose a number between 0-100%';
     this.refreshCache();
     this.volume = newVol / 100;
-    if (this.isStreaming()) 
+    if (this.isStreaming())
       this.connection.dispatcher.setVolume(this.volume);
   }
 
   public async join(voiceChannel: VoiceChannel) {
     if (this.isInVoiceChannel() && this.connection.channel.id === voiceChannel.id)
       throw new Error('I am already there!');
-    else if (voiceChannel.full) 
+    else if (voiceChannel.full)
       throw new Error('That voice channel is full!');
     this.connection = await voiceChannel.join();
   }
@@ -175,12 +175,13 @@ export class QueuePlayer {
       this.connection.playStream(stream, { seek: 0, volume: this.volume, passes: 1 });
       this.connection.dispatcher.once('start', () => console.log(`Streaming: ${this.nowPlaying.title}`));
       this.connection.dispatcher.once('end', reason => {
+        stream.destroy();
         this.pcMnger.deleteCards();
         this.pcMnger.setPaused(false);
         this.pcMnger.hideQueue();
         this.messageCache.channel.send(`Played: *${this.nowPlaying.title}*`);
         if (reason !== 'forceStop') {
-          if (this.connection.channel.members.every( member => member.deaf || member.user.bot )) {
+          if (this.connection.channel.members.every(member => member.deaf || member.user.bot)) {
             this.messageCache.channel.send('Stopping stream since no one is listening');
             this.connection.disconnect();
           } else if (this.queue.size() > 0) {

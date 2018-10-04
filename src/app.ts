@@ -1,19 +1,20 @@
 "use strict"
 
-import { MongoClient, Db } from 'mongodb';
-import { BotConfig }       from './typings';
-import { DiscordBot }      from './libs/DiscordBot';
-import { Cache }           from './libs/data/Cache';
-import { loadConfig }      from './libs/common/Utils';
+import { Db, MongoClient } from 'mongodb';
+import * as commands from './commands';
+import { loadConfig } from './libs/common/Utils';
+import { Cache } from './libs/data/Cache';
+import { DiscordBot } from './libs/DiscordBot';
+import * as models from './models';
+import { BotConfig } from './typings';
 
-import * as models      from './models';
-import * as commands    from './commands';
 
 async function startBot(config: BotConfig) {
   try {
     const bot = new DiscordBot(config);
     // Connect database
-    const db: Db = await MongoClient.connect(config.dbUrl);
+    const mongo: MongoClient = await MongoClient.connect(config.dbUrl);
+    const db: Db = await mongo.db();
     const cache = new Cache();
     // Setup DAOs
     const daos = {};

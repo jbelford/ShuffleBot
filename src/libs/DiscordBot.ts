@@ -1,15 +1,15 @@
 "use strict"
 
-import * as _  from 'lodash';
+import { Client, Guild, GuildMember, Message, PermissionResolvable, Role, TextChannel } from 'discord.js';
+import { EventEmitter } from 'events';
+import * as _ from 'lodash';
+import { BotConfig } from '../typings';
 
-import { BotConfig, CommandsList } from '../typings';
-import { EventEmitter }            from 'events';
-import { Client, TextChannel, Message, PermissionResolvable, GuildMember, Role, Guild } from 'discord.js';
 
 export class DiscordBot extends EventEmitter {
 
   public readonly client: Client;
-  public readonly perms: PermissionResolvable[];
+  public readonly perms: PermissionResolvable;
 
   constructor(private config: BotConfig) {
     super();
@@ -20,7 +20,7 @@ export class DiscordBot extends EventEmitter {
     this.client.on('guildCreate', guild => this.joinGuildHandler(this, guild));
     this.client.on('error', console.log);
   }
-  
+
   public login() {
     return this.client.login(this.config.tokens.discord);
   }
@@ -46,10 +46,10 @@ export class DiscordBot extends EventEmitter {
   private async messageHandler(bot: DiscordBot, message: Message) {
     try {
       if (message.author.bot || message.channel.type !== "text") return;
-      
+
       const content = message.content.trim().split(/\s+/g);
       if (content[0].charAt(0) !== bot.config.commandToken) return;
-      else if (!bot.hasSendPermission(message.channel as TextChannel)) 
+      else if (!bot.hasSendPermission(message.channel as TextChannel))
         return await message.author.send("I do not have permission to send messages there. Contact a server admin to get this resolved.");
 
       const cmd = content[0].substr(1);
@@ -61,7 +61,7 @@ export class DiscordBot extends EventEmitter {
 
       const userPermissionLevel = bot.getPermissionLevel(message.member);
       const command = cmdModule.commands[cmdsplit[1]];
-      if (_.isNil(command) || (command.level === 3 && userPermissionLevel < 3)) 
+      if (_.isNil(command) || (command.level === 3 && userPermissionLevel < 3))
         return await message.reply(`There is no \`${cmdsplit[1]}\` command for the category \`${cmdModule.name}\`!` +
           `\nUse \`${bot.config.commandToken}help ${cmdModule.name}\` to see the list of commands in that category.` +
           `\nYou can also use \`${bot.config.commandToken}help\` to see the list of all categories.`);
