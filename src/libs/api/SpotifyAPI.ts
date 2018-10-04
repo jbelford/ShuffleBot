@@ -1,6 +1,5 @@
 "use strict"
 
-import * as _ from 'lodash';
 import * as SpotifyWebAPI from 'spotify-web-api-node';
 import { SpotifyTrack } from '../../typings/index';
 
@@ -16,32 +15,32 @@ export class SpotifyAPI {
     });
   }
 
-  public async getPlaylist(userId: string, playlistId: string): Promise<{ name: string, tracks: SpotifyTrack[]}> {
+  public async getPlaylist(playlistId: string): Promise<{ name: string, tracks: SpotifyTrack[] }> {
     try {
       await this.checkAndUpdateToken();
-      let data = await this.spotifyApi.getPlaylist(userId, playlistId);
+      let data = await this.spotifyApi.getPlaylist(playlistId);
       const name = data.body.name;
       let total = data.body.tracks.total;
       let defaultArt = data.body.images.length ? data.body.images[0].url : 'http://beatmakerleague.com/images/No_Album_Art.png';
       let items = data.body.tracks.items;
       while (items.length < total) {
         await this.checkAndUpdateToken();
-        data = await this.spotifyApi.getPlaylistTracks(userId, playlistId, { offset: items.length, limit: 100 });
+        data = await this.spotifyApi.getPlaylistTracks(playlistId, { offset: items.length, limit: 100 });
         items = items.concat(data.body.items);
       }
-      return { 
+      return {
         name: name,
-        tracks:  items.map( item => ({
+        tracks: items.map(item => ({
           title: item.track.name,
           url: '',
-          poster: item.track.artists.map( x => x.name).join(', '),
+          poster: item.track.artists.map(x => x.name).join(', '),
           pic: item.track.album.images.length ? item.track.album.images[0].url : defaultArt,
           src: 'spot',
           loaded: false,
           trackId: item.track.uri
         }))
       };
-    } catch(e) {
+    } catch (e) {
       return null;
     }
   }

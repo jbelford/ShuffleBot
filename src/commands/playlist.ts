@@ -1,16 +1,16 @@
 "use strict"
 
-import * as _      from 'lodash';
-import * as Utils  from '../libs/common/Utils';
-import * as Embeds from '../libs/common/Embeds';
-
-import { BotConfig, Daos, Track } from '../typings';
-import { DiscordBot }           from '../libs/DiscordBot';
-import { YoutubeAPI }           from '../libs/api/YoutubeAPI';
-import { SoundCloudAPI }        from '../libs/api/SoundCloudAPI';
-import { Message, TextChannel, Attachment } from 'discord.js';
+import { Attachment, Message } from 'discord.js';
+import * as _ from 'lodash';
 import { Readable } from 'stream';
+import { SoundCloudAPI } from '../libs/api/SoundCloudAPI';
 import { SpotifyAPI } from '../libs/api/SpotifyAPI';
+import { YoutubeAPI } from '../libs/api/YoutubeAPI';
+import * as Embeds from '../libs/common/Embeds';
+import * as Utils from '../libs/common/Utils';
+import { DiscordBot } from '../libs/DiscordBot';
+import { BotConfig, Daos } from '../typings';
+
 
 export function addPlaylistCommands(bot: DiscordBot, config: BotConfig, daos: Daos) {
   const users = daos.users;
@@ -30,7 +30,7 @@ export function addPlaylistCommands(bot: DiscordBot, config: BotConfig, daos: Da
         if (botUser.playlists.length === 0) return await message.channel.send(`**I am still working on those!**`);
         return await message.channel.send({ embed: Embeds.userPlaylistsEmbed(bot.client.user, botUser.playlists, false) });
       } else if (idx === 2) {
-        const members = message.guild.members.array().map( member => member.id );
+        const members = message.guild.members.array().map(member => member.id);
         const playlistUsers = await users.getList(members);
         const playlists = playlistUsers
           .reduce((a, b) => a.concat(
@@ -49,7 +49,7 @@ export function addPlaylistCommands(bot: DiscordBot, config: BotConfig, daos: Da
       }
       await message.reply('Nothing corresponds to that index!');
     },
-    
+
     'new': async (message, params, level) => {
       const paramsReg = /^\s*([^\s]+)\s+"([^"]+)"\s*$/g
       const match = paramsReg.exec(params.join(' '));
@@ -60,7 +60,7 @@ export function addPlaylistCommands(bot: DiscordBot, config: BotConfig, daos: Da
       if (plId.length > config.playlists.idLength)
         return await message.reply(`Playlist ID exceeds maximum character length of \`${config.playlists.idLength}\`!`)
       const name = match[2].trim().replace(/\s+/g, ' ');
-      if (name.length > config.playlists.nameLength) 
+      if (name.length > config.playlists.nameLength)
         return await message.reply(`Name exceeds maximum character length of \`${config.playlists.nameLength}\`!`);
       const err = await users.newPlaylist(message.author.id, plId, name);
       await message.reply(err ? err : `The playlist **${name}** has been created and can be identified using \`${plId}\``);
@@ -71,7 +71,7 @@ export function addPlaylistCommands(bot: DiscordBot, config: BotConfig, daos: Da
       const match = paramsReg.exec(params.join(' '));
       if (_.isNil(match))
         return await message.reply(`Incorrect usage! The format is: \`${config.commandToken}pl.add <playlistId> - (<query> | <specific>)\``);
-      
+
       const plId = match[1];
       const paramsText = match[2];
       const queryResult = await Utils.songQuery(message, paramsText, scUsers, users, scApi, ytApi);
@@ -90,7 +90,7 @@ export function addPlaylistCommands(bot: DiscordBot, config: BotConfig, daos: Da
       const match = paramsReg.exec(params.join(' '));
       if (_.isNil(match))
         return await message.reply(`Incorrect usage! The format is \`${config.commandToken}pl.remove <playlistId> <range>\``);
-      
+
       const plId = match[1];
       const range = match[2];
       let err: string;
@@ -124,7 +124,7 @@ export function addPlaylistCommands(bot: DiscordBot, config: BotConfig, daos: Da
       playlistInfo = playlistInfo.replace(/'%SONGS%'/g, JSON.stringify(playlist.list));
 
       const readable = new Readable();
-      readable._read = () => {};
+      readable._read = () => { };
       readable.push(playlistInfo);
       readable.push(null);
 
@@ -133,9 +133,9 @@ export function addPlaylistCommands(bot: DiscordBot, config: BotConfig, daos: Da
     },
 
     'import': async (message, params, level) => {
-      if (params.length === 0) 
+      if (params.length === 0)
         return await message.reply('Missing parameter: <playlistId>');
-      else if (params[0].length > config.playlists.idLength) 
+      else if (params[0].length > config.playlists.idLength)
         return await message.reply(`Playlist ID exceeds maximum character length of \`${config.playlists.idLength}\`!`);
       else if (params.length === 1)
         return await message.reply('Missing parameter: <spotifyPlaylist>');
@@ -143,7 +143,7 @@ export function addPlaylistCommands(bot: DiscordBot, config: BotConfig, daos: Da
       if (_.isNil(uriDetails)) return message.reply('Invalid URI provided.');
 
       const pending = await message.channel.send('Retrieving Spotify playlist... (This may take a moment)') as Message;
-      const playlist = await spotifyApi.getPlaylist(uriDetails[1], uriDetails[2]);
+      const playlist = await spotifyApi.getPlaylist(uriDetails[2]);
       if (_.isNil(playlist)) return message.reply('Failed to fetch tracks.');
 
       let err = await users.newPlaylist(message.author.id, params[0], playlist.name);
