@@ -1,13 +1,13 @@
 'use strict'
 
-import 'mocha';
-
-import * as _ from 'lodash';
-
 import { expect } from 'chai';
-import { loadConfig } from '../../../src/libs/common/Utils';
+import * as _ from 'lodash';
+import 'mocha';
 import { SoundCloudAPI } from '../../../src/libs/api/SoundCloudAPI';
+import { loadConfig } from '../../../src/libs/common/Utils';
 import { SCUser } from '../../../src/typings/index';
+
+
 
 const config = loadConfig();
 let scApi: SoundCloudAPI;
@@ -70,7 +70,7 @@ describe('SoundCloudAPI', () => {
     });
 
     it('Gets users info', async () => {
-      const permalink = 'phantasmusa';
+      const permalink = 'jack-belford-1';
       const info = await scApi.getUserInfo(permalink);
       expect(info.permalink).to.equal(permalink);
     });

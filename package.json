@@ -15,7 +15,7 @@
     "node-opus": "^0.2.6",
     "opusscript": "0.0.2",
     "request": "^2.79.0",
-    "spotify-web-api-node": "^2.5.0",
+    "spotify-web-api-node": "^3.0.0",
     "uws": "^0.14.5",
     "ytdl-core": "^0.20.2"
   },
