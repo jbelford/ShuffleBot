@@ -1,12 +1,12 @@
 "use strict"
 
 import * as request from 'request';
-import * as ytdl    from 'ytdl-core';
-
-import { SpotifyTrack, BotConfig, Track } from "../../typings/index";
-import { Users }      from "../../models/Users";
+import { Readable } from "stream";
+import * as ytdl from 'ytdl-core';
+import { Users } from "../../models/Users";
+import { BotConfig, SpotifyTrack, Track } from "../../typings/index";
 import { YoutubeAPI } from "../api/YoutubeAPI";
-import { Readable }   from "stream";
+
 
 export class StreamService {
 
@@ -20,10 +20,11 @@ export class StreamService {
     if (track.src === 'sc') return cb(request(`${track.url}?client_id=${this.config.tokens.soundcloud}`) as any);
     else if (track.src === 'spot' && !(track as SpotifyTrack).loaded) {
       return this.loadAndUpdateTrack(track as SpotifyTrack).then( (newTrack) => {
-        cb(ytdl(newTrack.url, { filter : 'audioonly' }));
+        cb(ytdl(newTrack.url, { filter : 'audioonly' }).on('error', (err) => console.log(err)));
       });
     }
-    return cb(ytdl(track.url, { filter : 'audioonly' }));
+    return cb(ytdl(track.url, { filter : 'audioonly' })
+        .on('error', (err) => console.log(err)));
   }
 
   private async loadAndUpdateTrack(track: SpotifyTrack) {
