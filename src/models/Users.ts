@@ -62,13 +62,14 @@ export class Users {
     this.updateUserCache(userId, user);
   }
 
-  public async addToPlaylist(userId: string, plId: string, tracks: Track[]) {
-    let user = await this.getUser(userId);
-    if (!user.playlists.some(x => x.key === plId))
+  public async addToPlaylist(userId: string, plId: string, tracks: Track[]): Promise<string | undefined> {
+    try {
+      const user = await this.users.addToPlaylist(userId, plId, tracks);
+      this.updateUserCache(userId, user);
+    } catch (e) {
+      console.log(e);
       return `You have no playlist identified by \`${plId}\``;
-
-    user = await this.users.addToPlaylist(user, plId, tracks);
-    this.updateUserCache(userId, user);
+    }
   }
 
   public async removeFromPlaylist(userId: string, plId: string, idx1: number, idx2?: number) {

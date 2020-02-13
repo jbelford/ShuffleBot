@@ -40,7 +40,7 @@ class FirestoreCollection<T> implements IDbCollection<T> {
 export interface UsersCollection extends IDbCollection<GuildUser> {
     addPlaylist(userId: string, name: string, plId: string): Promise<GuildUser>;
     deletePlaylist(userId: string, plId: string): Promise<GuildUser>;
-    addToPlaylist(user: GuildUser, plId: string, tracks: Track[]): Promise<GuildUser>;
+    addToPlaylist(userId: string, plId: string, tracks: Track[]): Promise<GuildUser>;
 }
 
 export class FirestoreUsersCollection extends FirestoreCollection<GuildUser> implements UsersCollection {
@@ -69,12 +69,16 @@ export class FirestoreUsersCollection extends FirestoreCollection<GuildUser> imp
         return user;
     }
 
-    async addToPlaylist(user: GuildUser, plId: string, tracks: Track[]): Promise<GuildUser> {
+    async addToPlaylist(userId: string, plId: string, tracks: Track[]): Promise<GuildUser> {
+        const user = await this.get(userId);
+
         const playlist = user.playlists.find(x => x.key === plId);
-        playlist.list = playlist.list.concat(tracks);
+        if (!playlist) throw 'No playlist found';
+
+        playlist.list = (playlist.list || []).concat(tracks);
         playlist.size = playlist.list.length;
 
-        await this.set(playlist.key, user);
+        await this.set(userId, user);
 
         return user;
     }

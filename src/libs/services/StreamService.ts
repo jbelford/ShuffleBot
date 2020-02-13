@@ -1,8 +1,8 @@
 "use strict"
 
-import * as request from 'request';
+import request from 'request';
 import { Readable } from "stream";
-import * as ytdl from 'ytdl-core';
+import ytdl from 'ytdl-core';
 import { BotConfig, SpotifyTrack, Track } from "../../typings/index";
 import { YoutubeAPI } from "../api/YoutubeAPI";
 import { SearchCollection } from '../data/db';

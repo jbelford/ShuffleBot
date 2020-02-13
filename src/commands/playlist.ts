@@ -139,12 +139,14 @@ export function addPlaylistCommands(bot: DiscordBot, config: BotConfig, daos: Da
         return await message.reply(`Playlist ID exceeds maximum character length of \`${config.playlists.idLength}\`!`);
       else if (params.length === 1)
         return await message.reply('Missing parameter: <spotifyPlaylist>');
+      else if (!params[0].match(/^[\w-]+$/g))
+        return await message.reply('Playlist ID may only contain letters, numbers, dashes, and/or underlines.')
       const uriDetails = /[\/:]playlist[\/:](.+)/.exec(params[1]);
-      if (_.isNil(uriDetails)) return message.reply('Invalid URI provided.');
+      if (_.isNil(uriDetails)) return await message.reply('Invalid URI provided.');
 
       const pending = await message.channel.send('Retrieving Spotify playlist... (This may take a moment)') as Message;
       const playlist = await spotifyApi.getPlaylist(uriDetails[1]);
-      if (_.isNil(playlist)) return message.reply('Failed to fetch tracks.');
+      if (_.isNil(playlist)) return await message.reply('Failed to fetch tracks.');
 
       let err = await users.newPlaylist(message.author.id, params[0], playlist.name);
       if (err) return await message.reply(err);

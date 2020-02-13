@@ -1,6 +1,6 @@
 "use strict"
 
-import * as SpotifyWebAPI from 'spotify-web-api-node';
+import SpotifyWebAPI from 'spotify-web-api-node';
 import { SpotifyTrack } from '../../typings/index';
 
 export class SpotifyAPI {
@@ -25,8 +25,8 @@ export class SpotifyAPI {
       let items = data.body.tracks.items;
       while (items.length < total) {
         await this.checkAndUpdateToken();
-        data = await this.spotifyApi.getPlaylistTracks(playlistId, { offset: items.length, limit: 100 });
-        items = items.concat(data.body.items);
+        const nextTracks = await this.spotifyApi.getPlaylistTracks(playlistId, { offset: items.length, limit: 100 });
+        items = items.concat(nextTracks.body.items);
       }
       return {
         name: name,
@@ -41,12 +41,13 @@ export class SpotifyAPI {
         }))
       };
     } catch (e) {
+      console.log(e);
       return null;
     }
   }
 
   private async checkAndUpdateToken() {
-    if (Date.now() + 5000 > this.expiration) {
+    if (Date.now() + 2000 > this.expiration) {
       const data = await this.spotifyApi.clientCredentialsGrant();
       this.spotifyApi.setAccessToken(data.body.access_token);
     }
