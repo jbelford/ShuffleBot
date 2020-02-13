@@ -1,33 +1,23 @@
 "use strict"
 
-import SpotifyWebAPI from 'spotify-web-api-node';
+import request from 'request';
 import { SpotifyTrack } from '../../typings/index';
 
 export class SpotifyAPI {
-
-  private spotifyApi: SpotifyWebAPI;
   private expiration: number = 0;
+  private accessToken?: string;
 
-  constructor(clientId: string, clientSecret: string) {
-    this.spotifyApi = new SpotifyWebAPI({
-      clientId: clientId,
-      clientSecret: clientSecret
-    });
+  constructor(private readonly clientId: string, private readonly clientSecret: string) {
   }
 
   public async getPlaylist(playlistId: string): Promise<{ name: string, tracks: SpotifyTrack[] }> {
     try {
       await this.checkAndUpdateToken();
-      let data = await this.spotifyApi.getPlaylist(playlistId);
-      const name = data.body.name;
-      let total = data.body.tracks.total;
-      let defaultArt = data.body.images.length ? data.body.images[0].url : 'http://beatmakerleague.com/images/No_Album_Art.png';
-      let items = data.body.tracks.items;
-      while (items.length < total) {
-        await this.checkAndUpdateToken();
-        const nextTracks = await this.spotifyApi.getPlaylistTracks(playlistId, { offset: items.length, limit: 100 });
-        items = items.concat(nextTracks.body.items);
-      }
+      const { body } = await this.get(`https://api.spotify.com/v1/playlists/${playlistId}`);
+      const data = JSON.parse(body);
+      const name = data.name;
+      const defaultArt = data.images.length ? data.images[0].url : 'http://beatmakerleague.com/images/No_Album_Art.png';
+      const items = data.tracks.items.concat(await this.getPlaylistTracks(data.tracks.next));
       return {
         name: name,
         tracks: items.map(item => ({
@@ -47,9 +37,45 @@ export class SpotifyAPI {
   }
 
   private async checkAndUpdateToken() {
-    if (Date.now() + 2000 > this.expiration) {
-      const data = await this.spotifyApi.clientCredentialsGrant();
-      this.spotifyApi.setAccessToken(data.body.access_token);
+    if (Date.now() + 5000 > this.expiration) {
+      const data = await this.getToken();
+      this.accessToken = data.access_token;
+      this.expiration = Date.now() + data.expires_in;
     }
   }
+
+  // Spoftiy web node library is SHIT
+  private async getPlaylistTracks(url: string): Promise<any> {
+    let items = [];
+
+    while (url) {
+      await this.checkAndUpdateToken();
+      const { body } = await this.get(url);
+      let data = JSON.parse(body);
+      items = items.concat(data.items);
+      url = data.next;
+    }
+
+    return items;
+  }
+
+  private get(url: string): Promise<any> {
+    return requestP(url, { auth: { bearer: this.accessToken } });
+  }
+
+  private async getToken(): Promise<{ access_token: string, expires_in: number }> {
+    let auth = (new Buffer(`${this.clientId}:${this.clientSecret}`)).toString('base64');
+
+    const resp = await requestP('https://accounts.spotify.com/api/token',
+      { method: 'post', body: 'grant_type=client_credentials', headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/x-www-form-urlencoded' }});
+
+    return JSON.parse(resp.body);
+  }
+
+}
+
+function requestP(url: string, options?: request.CoreOptions): Promise<any> {
+  return new Promise((resolve, reject) => {
+    request(url, options, (err, resp) => err ? reject(err) : resolve(resp));
+  });
 }
