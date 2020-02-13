@@ -1,16 +1,16 @@
 "use strict"
 
-import { Db }                from 'mongodb';
-import { Cache }             from '../libs/data/Cache';
-import { Poll }              from '../libs/data/Poll';
-import { PollOption }        from '../typings';
-import { User, TextChannel } from 'discord.js';
+import { Firestore } from '@google-cloud/firestore';
+import { TextChannel, User } from 'discord.js';
+import { Cache } from '../libs/data/Cache';
+import { Poll } from '../libs/data/Poll';
+import { PollOption } from '../typings';
 
 export class PollManager {
 
   private ttl = 1000 * 60 * 60 * 3;
-  
-  constructor(db: Db, private cache: Cache) {
+
+  constructor(db: Firestore, private cache: Cache) {
   }
 
   public async createPoll(channel: TextChannel, user: User, question: string, options: PollOption[]) {

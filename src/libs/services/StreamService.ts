@@ -1,18 +1,18 @@
 "use strict"
 
-import * as request from 'request';
+import request from 'request';
 import { Readable } from "stream";
-import * as ytdl from 'ytdl-core';
-import { Users } from "../../models/Users";
+import ytdl from 'ytdl-core';
 import { BotConfig, SpotifyTrack, Track } from "../../typings/index";
 import { YoutubeAPI } from "../api/YoutubeAPI";
+import { SearchCollection } from '../data/db';
 
 
 export class StreamService {
 
   private ytApi: YoutubeAPI;
 
-  constructor(private users: Users, private config: BotConfig) {
+  constructor(private users: SearchCollection, private config: BotConfig) {
     this.ytApi = new YoutubeAPI(config.tokens.youtube);
   }
 
@@ -27,11 +27,17 @@ export class StreamService {
         .on('error', (err) => console.log(err)));
   }
 
-  private async loadAndUpdateTrack(track: SpotifyTrack) {
-    const youtubeTracks = await this.ytApi.searchForVideo(`${track.title} ${track.poster}`);
+  private async loadAndUpdateTrack(track: SpotifyTrack): Promise<Track> {
+    const search = `${track.title} ${track.poster}`;
+    const result = await this.users.get(search);
+    if (result) {
+      return result;
+    }
+
+    const youtubeTracks = await this.ytApi.searchForVideo(search);
     track.url = youtubeTracks[0].url;
     track.loaded = true;
-    await this.users.updateAllUsersSpotifyTrack(track);
+    this.users.set(search, track);
     return track;
   }
 }

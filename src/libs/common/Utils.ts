@@ -1,13 +1,13 @@
-import * as request from 'request';
-import * as _       from 'lodash';
-import * as fs      from 'fs';
-
-import { SoundCloudAPI }   from '../api/SoundCloudAPI';
-import { YoutubeAPI }      from '../api/YoutubeAPI';
-import { Track, SCUser, GuildUser, BotConfig }   from '../../typings';
-import { Users }           from '../../models/Users';
+import { EmojiIdentifierResolvable, Message, TextChannel } from 'discord.js';
+import * as fs from 'fs';
+import * as _ from 'lodash';
+import request from 'request';
 import { SoundCloudUsers } from '../../models/SoundCloudUsers';
-import { TextChannel, Message, EmojiIdentifierResolvable } from 'discord.js';
+import { Users } from '../../models/Users';
+import { BotConfig, GuildUser, SCUser, Track } from '../../typings';
+import { SoundCloudAPI } from '../api/SoundCloudAPI';
+import { YoutubeAPI } from '../api/YoutubeAPI';
+
 
 export function loadConfig(): BotConfig {
   const config = JSON.parse(fs.readFileSync(`./config/config.json`, 'utf8'));
@@ -178,7 +178,7 @@ export async function songQuery(message: Message, paramsText: string, scUsers: S
   else if (collected.songs.length === 0) {
     const query = paramsText.replace(/(^|\s)--(shuffle|next)($|\s)/g, '').trim();
     const songs: Track[] = await ytApi.searchForVideo(query);
-    const options = songs.map( (song, idx) => { 
+    const options = songs.map( (song, idx) => {
       return { option: `${idx + 1}. ${song.title}`, select: [`${idx + 1}`] }
     });
     const songIdx = await question(`Select which song you wanted to add:`, options,
