@@ -1,33 +1,36 @@
 "use strict"
 
+import { Firestore } from '@google-cloud/firestore';
 import * as _ from 'lodash';
-
-import { Db, Collection } from 'mongodb';
 import { Cache } from '../libs/data/Cache';
+import { FirestoreGuildsCollection, GuildsCollection } from '../libs/data/db';
 import { BotConfig } from '../typings';
+
 
 export class Guilds {
 
-  private collectionName: string = 'Guilds';
-  private collection: Collection;
+  private collection: GuildsCollection;
   private scLim: number;
   private scInterval: number;
 
-  constructor(db: Db, private cache: Cache, config: BotConfig) {
-    this.collection = db.collection(this.collectionName);
+  constructor(db: Firestore, private cache: Cache, config: BotConfig) {
+    this.collection = new FirestoreGuildsCollection(db);
     this.scLim = config.sc.limit;
     this.scInterval = config.sc.interval * 1000 * 60 * 60;
   }
 
   public async canDownload(guildId: string) {
-    const doc = await this.collection.findOne({ guildId: guildId });
-    if (_.isNil(doc)) return true;
-    const regen = Math.floor((Date.now() - doc.scdl.timestamp) / this.scInterval);
-    if (regen > 0) this.collection.update({ _id: doc._id }, { $set: { "scdl.num": Math.max(doc.scdl.num - regen, 0) } });
-    return doc.scdl.num - regen < this.scLim;
+    const guild = await this.collection.get(guildId);
+    if (_.isNil(guild)) return true;
+    const regen = Math.floor((Date.now() - guild.scdl.timestamp) / this.scInterval);
+    if (regen > 0) {
+      guild.scdl.num = Math.max(guild.scdl.num - regen, 0);
+      await this.collection.set(guildId, guild);
+    }
+    return guild.scdl.num - regen < this.scLim;
   }
 
   public updateDownload(guildId: string) {
-    return this.collection.updateOne({ guildId: guildId }, { $set: { "scdl.timestamp": Date.now() }, $inc: { "scdl.num": 1 } }, { upsert: true });
+    this.collection.incrementScdl(guildId);
   }
 }

@@ -1,6 +1,6 @@
 "use strict"
 
-import { Db, MongoClient } from 'mongodb';
+import { Firestore } from '@google-cloud/firestore';
 import * as commands from './commands';
 import { loadConfig } from './libs/common/Utils';
 import { Cache } from './libs/data/Cache';
@@ -13,8 +13,7 @@ async function startBot(config: BotConfig) {
   try {
     const bot = new DiscordBot(config);
     // Connect database
-    const mongo: MongoClient = await MongoClient.connect(config.dbUrl);
-    const db: Db = await mongo.db();
+    const db = new Firestore();
     const cache = new Cache();
     // Setup DAOs
     const daos = {};

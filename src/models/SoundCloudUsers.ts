@@ -1,22 +1,23 @@
 "use strict"
 
+import { Firestore } from '@google-cloud/firestore';
 import { EventEmitter } from 'events';
 import * as _ from 'lodash';
-import { Collection, Db } from 'mongodb';
 import { SoundCloudAPI } from '../libs/api/SoundCloudAPI';
 import { Cache } from '../libs/data/Cache';
+import { FirestoreSoundCloudUsersCollection, SoundCloudUsersCollection } from '../libs/data/db';
 import { BotConfig, SCUser } from '../typings';
 
 
 export class SoundCloudUsers extends EventEmitter {
 
   private collectionName: string = 'SoundCloudUsers';
-  private collection: Collection;
+  private collection: SoundCloudUsersCollection;
   private scApi: SoundCloudAPI;
 
-  constructor(db: Db, private cache: Cache, config: BotConfig) {
+  constructor(db: Firestore, private cache: Cache, config: BotConfig) {
     super();
-    this.collection = db.collection(this.collectionName);
+    this.collection = new FirestoreSoundCloudUsersCollection(db);
     this.scApi = new SoundCloudAPI(config.tokens.soundcloud);
   }
 
@@ -41,7 +42,7 @@ export class SoundCloudUsers extends EventEmitter {
       if (this.cache.needsUpdate(cachedId, user_info)) {
         this.cache.update(cachedId, user_info);
         delete user_info.guilds;
-        doc = await this.collection.updateOne({ permalink: user_info.permalink }, { $addToSet: { guilds: guildId }, $set: user_info }, { upsert: true });
+        doc = await this.collection.updateAndAddGuild(user_info, guildId);
         this.cache.removeIf(`${this.collectionName}:${guildId}`);
       } else {
         doc = this.cache.get(cachedId);
@@ -56,7 +57,7 @@ export class SoundCloudUsers extends EventEmitter {
   public async listUsers(guildId: string) {
     const cachedId = `${this.collectionName}:${guildId}`;
     if (this.cache.has(cachedId)) return this.cache.get(cachedId) as SCUser[];
-    const userList: SCUser[] = await this.collection.find({ guilds: { $elemMatch: { $eq: guildId } } }).toArray() as any;
+    const userList: SCUser[] = await this.collection.getForGuild(guildId);
     this.cache.update(cachedId, userList);
     return userList;
   }
@@ -64,22 +65,21 @@ export class SoundCloudUsers extends EventEmitter {
   public async getUser(user_permalink: string) {
     const cachedId = `${this.collectionName}:${user_permalink}`;
     if (this.cache.has(cachedId)) return this.cache.get(cachedId) as SCUser;
-    const user: SCUser = await this.collection.findOne({ permalink: user_permalink }) as any;
+    const user: SCUser = await this.collection.get(user_permalink);
     this.cache.update(cachedId, user);
     return user;
   }
 
-  public async removeUser(userquery: string, guildId: string) {
+  public async removeUser(userquery: string, guildId: string): Promise<boolean> {
     const cachedId = `${this.collectionName}:${guildId}`;
     if (this.cache.has(cachedId) && this.cache.get(cachedId).every((user: SCUser) => user.permalink !== userquery && user.username !== userquery)) {
       return false;
     }
-    const doc = await this.collection.findOneAndUpdate({ $or: [{ permalink: userquery }, { username: userquery }] }, { $pullAll: { guilds: [guildId] } });
-    if (doc.lastErrorObject.updatedExisting) {
-      if (doc.value.guilds.length === 1) this.collection.deleteOne({ _id: doc.value._id });
+
+    const existed = this.collection.removeGuild(userquery, guildId);
+    if (existed) {
       this.cache.removeIf(cachedId);
-      return true;
     }
-    return false;
+    return existed;
   }
 }

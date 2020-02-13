@@ -1,11 +1,11 @@
 "use strict"
 
-import { Db }          from 'mongodb';
-import { Cache }       from '../libs/data/Cache';
+import { Firestore } from '@google-cloud/firestore';
+import { Cache } from '../libs/data/Cache';
+import { FirestoreSearchCollection } from '../libs/data/db';
 import { QueuePlayer } from '../libs/QueuePlayer';
-import { BotConfig }   from '../typings';
 import { StreamService } from '../libs/services/StreamService';
-import { Users } from './Users';
+import { BotConfig } from '../typings';
 
 export class QueuePlayerManager {
 
@@ -13,9 +13,9 @@ export class QueuePlayerManager {
   private cache: Cache;
   private streamService: StreamService;
 
-  constructor(db: Db, cache: Cache, private config: BotConfig) {
+  constructor(db: Firestore, cache: Cache, private config: BotConfig) {
     this.cache = cache;
-    this.streamService = new StreamService(new Users(db, cache, config), config);
+    this.streamService = new StreamService(new FirestoreSearchCollection(db), config);
   }
 
   public get(guildId): QueuePlayer {
