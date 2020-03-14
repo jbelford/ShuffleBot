@@ -50,7 +50,28 @@ export function addQueueCommands(bot: DiscordBot, config: BotConfig, daos: Daos)
         await message.reply(`Failed to add anything to the queue.`);
         console.log(e);
       }
-    }
+    },
+
+    'replace': async (message: Message, params: string[]) => {
+      const queuePlayer = queuePlayerManager.get(message.guild.id);
+      if (queuePlayer.queuedTracks !== 0) {
+        await queuePlayer.clear();
+        await message.reply('The queue is already empty though...');
+      }
+      try {
+        if (params.length === 0) return await message.reply("You didn't specify what to add!");
+        const queryResults = await Utils.songQuery(message, params.join(' '), scUsers, users, scApi, ytApi);
+        if (_.isNil(queryResults)) return;
+        await queuePlayerManager.get(message.guild.id).enqueue(queryResults.songs, queryResults.nextFlag);
+        const nameOrLength = queryResults.songs.length > 1 ? `${queryResults.songs.length} songs` : `**${queryResults.songs[0].title}**`;
+        let addedMsg = `Successfully added ${nameOrLength} `;
+        addedMsg += queryResults.nextFlag ? 'to be played next!' : 'to the queue!';
+        await message.reply(addedMsg);
+      } catch (e) {
+        await message.reply(`Failed to add anything to the queue.`);
+        console.log(e);
+      }
+    },
   }
 
   bot.on(config.commands.find(cat => cat.name === 'Queue').prefix, (command: string, message: Message, params: string[], level: number) => {
