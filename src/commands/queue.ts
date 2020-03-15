@@ -10,6 +10,11 @@ import { YoutubeAPI }      from '../libs/api/YoutubeAPI';
 import { SoundCloudAPI }   from '../libs/api/SoundCloudAPI';
 import { Message, TextChannel } from 'discord.js';
 
+enum InsertionMode {
+  Add,
+  Replace,
+}
+
 export function addQueueCommands(bot: DiscordBot, config: BotConfig, daos: Daos) {
   const queuePlayerManager = daos.queuePlayerManager;
   const scUsers = daos.soundCloudUsers;
@@ -17,19 +22,19 @@ export function addQueueCommands(bot: DiscordBot, config: BotConfig, daos: Daos)
   const ytApi = new YoutubeAPI(config.tokens.youtube);
   const scApi = new SoundCloudAPI(config.tokens.soundcloud);
 
-  const insertToQueue = async (mode: string, message: Message, params: string[]) => {
+  const insertToQueue = async (mode: InsertionMode, message: Message, params: string[]) => {
     try {
       if (params.length === 0) return await message.reply("You didn't specify what to add!");
       const queryResults = await Utils.songQuery(message, params.join(' '), scUsers, users, scApi, ytApi);
       if (_.isNil(queryResults)) return;
       let addedMsg: string;
-      if (mode === 'add') {
+      if (mode === InsertionMode.Add) {
         await queuePlayerManager.get(message.guild.id).enqueue(queryResults.songs, queryResults.nextFlag);
         const nameOrLength = queryResults.songs.length > 1 ? `${queryResults.songs.length} songs` : `**${queryResults.songs[0].title}**`;
         addedMsg = `Successfully added ${nameOrLength} `;
         addedMsg += queryResults.nextFlag ? 'to be played next!' : 'to the queue!';
       }
-      if (mode === 'replace') {
+      if (mode === InsertionMode.Replace) {
         const queuePlayer = queuePlayerManager.get(message.guild.id);
         if (queuePlayer.queuedTracks !== 0) {
           await queuePlayer.clear();
@@ -71,11 +76,11 @@ export function addQueueCommands(bot: DiscordBot, config: BotConfig, daos: Daos)
     },
 
     'add': async (message: Message, params: string[]) => {
-      insertToQueue('add', message, params)
+      insertToQueue(InsertionMode.Add, message, params)
     },
 
     'replace': async (message: Message, params: string[]) => {
-      insertToQueue('replace', message, params)
+      insertToQueue(InsertionMode.Replace, message, params)
     },
   }
 
