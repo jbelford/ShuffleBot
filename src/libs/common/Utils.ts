@@ -4,7 +4,7 @@ import * as _ from 'lodash';
 import request from 'request';
 import { SoundCloudUsers } from '../../models/SoundCloudUsers';
 import { Users } from '../../models/Users';
-import { BotConfig, GuildUser, SCUser, Track } from '../../typings';
+import { BotConfig, GuildUser, SCUser, Track, Playlist } from '../../typings';
 import { SoundCloudAPI } from '../api/SoundCloudAPI';
 import { YoutubeAPI } from '../api/YoutubeAPI';
 
@@ -107,24 +107,29 @@ async function getUserList(message: Message, params: string, scUsers: SoundCloud
   return { errors: errors, songs: songs };
 }
 
-async function getPlaylist(message: Message, params: string, users: Users) {
+async function getPlaylists(message: Message, params: string, users: Users) {
   const plReg = /(^|\s)pl\.([^\s]+)($|\s)/g;
-  const plQueries: string[] = [];
+  let errors = false;
+  let playlists: Playlist[] = [];
   let match: string[];
   while (!_.isNil(match = plReg.exec(params))) {
-    plQueries.push(match[2]);
-  }
-  let errors = false;
-  let songs: Track[] = [];
-  for (const i in plQueries) {
-    const plId = plQueries[i];
+    const plId = match[2];
     const user: GuildUser = await users.getUserFromPlaylistId(plId);
     if (_.isNil(user)) {
       await message.channel.send(`The playlist \`${plId}\` isn't recognized.`);
       errors = true;
       continue;
     }
-    const playlist = user.playlists.find(x => x.key === plId);
+    playlists.push(user.playlists.find(x => x.key === plId));
+  }
+  return { errors: errors, playlists: playlists };
+}
+
+async function getPlaylistTracks(message: Message, params: string, users: Users) {
+  const {playlists, errors} = await getPlaylists(message, params, users);
+  let songs: Track[] = [];
+  for (const i in playlists) {
+    const playlist = playlists[i];
     await message.channel.send(`Adding tracks from playlist \`${playlist.name}\`... Done`);
     songs = songs.concat(playlist.list);
   }
@@ -168,11 +173,12 @@ async function getSCList(message: Message, params: string, scApi: SoundCloudAPI)
 export async function songQuery(message: Message, paramsText: string, scUsers: SoundCloudUsers, users: Users, scApi: SoundCloudAPI, ytApi: YoutubeAPI) {
   const playNext = paramsText.includes('--next');
   const shuffle = paramsText.includes('--shuffle');
+  let playlists = (await getPlaylists(message, paramsText, users)).playlists;
   let collected = [
     await getUserList(message, paramsText, scUsers),
     await getYTList(message, paramsText, ytApi),
     await getSCList(message, paramsText, scApi),
-    await getPlaylist(message, paramsText, users)
+    await getPlaylistTracks(message, paramsText, users)
   ].reduce((a, b) => ({ errors: a.errors || b.errors, songs: a.songs.concat(b.songs) }));
   if (collected.errors) return null;
   else if (collected.songs.length === 0) {
@@ -191,5 +197,5 @@ export async function songQuery(message: Message, paramsText: string, scUsers: S
   } else if (shuffle) {
     collected.songs = shuffleList(collected.songs);
   }
-  return { songs: collected.songs, nextFlag: playNext, shuffleFlag: shuffle };
+  return { songs: collected.songs, playlists: playlists, nextFlag: playNext, shuffleFlag: shuffle };
 }
