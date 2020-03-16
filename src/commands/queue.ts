@@ -28,25 +28,27 @@ export function addQueueCommands(bot: DiscordBot, config: BotConfig, daos: Daos)
       const queryResults = await Utils.songQuery(message, params.join(' '), scUsers, users, scApi, ytApi);
       if (_.isNil(queryResults)) return;
       let addedMsg: string;
-      if (mode === InsertionMode.Add) {
-        await queuePlayerManager.get(message.guild.id).enqueue(queryResults.songs, queryResults.nextFlag);
-        const nameOrLength = queryResults.songs.length > 1 ? `${queryResults.songs.length} songs` : `**${queryResults.songs[0].title}**`;
-        addedMsg = `Successfully added ${nameOrLength} `;
-        addedMsg += queryResults.nextFlag ? 'to be played next!' : 'to the queue!';
-      }
-      if (mode === InsertionMode.Replace) {
-        const queuePlayer = queuePlayerManager.get(message.guild.id);
-        if (queuePlayer.queuedTracks !== 0) {
-          await queuePlayer.clear();
-        }
-        await queuePlayerManager.get(message.guild.id).enqueue(queryResults.songs, queryResults.nextFlag);
-        let replaceWith: string;
-        if (queryResults.songs.length > 1) {
-          replaceWith = `${queryResults.playlists.join(", ")} (${queryResults.songs.length} songs)`;
-        } else {
-          replaceWith = `**${queryResults.songs[0].title}**`;
-        }
-        addedMsg = `Successfully replaced queue with ${replaceWith}!`;
+      switch (mode) {
+        case InsertionMode.Add:
+          await queuePlayerManager.get(message.guild.id).enqueue(queryResults.songs, queryResults.nextFlag);
+          const nameOrLength = queryResults.songs.length > 1 ? `${queryResults.songs.length} songs` : `**${queryResults.songs[0].title}**`;
+          addedMsg = `Successfully added ${nameOrLength} `;
+          addedMsg += queryResults.nextFlag ? 'to be played next!' : 'to the queue!';
+          break;
+        case InsertionMode.Replace:
+          const queuePlayer = queuePlayerManager.get(message.guild.id);
+          if (queuePlayer.queuedTracks !== 0) {
+            await queuePlayer.clear();
+          }
+          await queuePlayer.enqueue(queryResults.songs, queryResults.nextFlag);
+          let replaceWith: string;
+          if (queryResults.songs.length > 1) {
+            replaceWith = `${queryResults.playlists.join(", ")} (${queryResults.songs.length} songs)`;
+          } else {
+            replaceWith = `**${queryResults.songs[0].title}**`;
+          }
+          addedMsg = `Successfully replaced queue with ${replaceWith}!`;
+          break;
       }
       
       await message.reply(addedMsg);
