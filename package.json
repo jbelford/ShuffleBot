@@ -11,7 +11,7 @@
     "erlpack": "github:discordapp/erlpack",
     "ffmpeg-binaries": "^3.2.2-3",
     "libsodium-wrappers": "^0.7.3",
-    "lodash": "^4.17.15",
+    "lodash": "^4.17.19",
     "node-opus": "^0.2.7",
     "opusscript": "0.0.6",
     "request": "^2.88.0",
