@@ -112,6 +112,19 @@
             "eval": {
                 "detail": "Allows execution of JavaScript code.",
                 "level": 3
+            },
+            "status": {
+                "args": {
+                    "text": "<status>",
+                    "description": [
+                        "<status> ~ The new status for the bot"
+                    ]
+                },
+                "detail": "Set the status of the bot",
+                "level": 3,
+                "usage": [
+                    "status Hey there!"
+                ]
             }
         }
     },

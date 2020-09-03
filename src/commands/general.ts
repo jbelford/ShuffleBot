@@ -121,6 +121,11 @@ export function addGeneralCommands(bot: DiscordBot, config: BotConfig, daos: Dao
       } catch (e) {
         await message.reply(`An error occured: ${e}`);
       }
+    },
+
+    'status': async (message: Message, params: string[]) => {
+      if (params.length === 0) return await message.reply('Missing arguments: <status>');
+      await bot.client.user.setGame(params.join(' '));
     }
   }
 
