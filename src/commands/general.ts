@@ -75,12 +75,13 @@ export function addGeneralCommands(bot: DiscordBot, config: BotConfig, daos: Dao
     'servers': async (message: Message, params: string[]) => {
       const perPage = 15;
       const totalPages = Math.ceil(bot.client.guilds.size / perPage);
-      let page = params.length > 0 ? parseInt(params[0]) || 1 : 1;
-      if (totalPages < page-- || page < 0) {
-        page = totalPages - 1;
+      let page = 0;
+      if (params.length > 0) {
+        page = Math.min(totalPages - 1, Math.max(0, parseInt(params[0]) || 0));
       }
+      const startIdx = perPage * page;
       const text = bot.client.guilds.array()
-        .slice(perPage * page, 15)
+        .slice(startIdx, startIdx + perPage)
         .map(guild => `Name: ${guild.name} ~ Members: ${guild.memberCount} ~ ID: ${guild.id}`)
         .join('\n');
       await message.channel.send('```\nServers: ' + `${bot.client.guilds.size}, Page: ${page + 1}/${totalPages}\n${text}` + '\n```', { split: true });
