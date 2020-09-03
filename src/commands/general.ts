@@ -81,6 +81,7 @@ export function addGeneralCommands(bot: DiscordBot, config: BotConfig, daos: Dao
       }
       const startIdx = perPage * page;
       const text = bot.client.guilds.array()
+        .sort((a, b) => b.memberCount - a.memberCount)
         .slice(startIdx, startIdx + perPage)
         .map(guild => `Name: ${guild.name} ~ Members: ${guild.memberCount} ~ ID: ${guild.id}`)
         .join('\n');
