@@ -1,10 +1,10 @@
 "use strict"
 
+import { EventEmitter } from 'events';
 import * as _ from 'lodash';
-
+import { SCUser, Track } from '../../typings';
 import { requestPromise } from '../common/Utils';
-import { Track, SCUser } from '../../typings';
-import { EventEmitter }  from 'events';
+
 
 export class SoundCloudAPI {
 
@@ -53,10 +53,11 @@ export class SoundCloudAPI {
   }
 
   public async downloadFavorites(user_info: SCUser, eventObj?: EventEmitter, event?: string) {
-    let next_href = `${this.SC_API}/users/${user_info.id}/favorites?limit=200&linked_partitioning=1&client_id=${this.clientID}`;
+    let next_href = `${this.SC_API}/users/${user_info.id}/favorites?limit=200&linked_partitioning=1`;
     const total = user_info.favorites;
     let list: Track[] = [];
     while (next_href) {
+      next_href += `&client_id=${this.clientID}`;
       const resp = await requestPromise(next_href);
       if (resp.statusCode !== 200) throw new Error(`Download failed: Code ${resp.statusCode}`);
       const data = JSON.parse(resp.body);
