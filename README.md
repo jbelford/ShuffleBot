@@ -1,14 +1,13 @@
-# **ShuffleBot**
+# 🔀 **ShuffleBot**
 A focused bot for playing music in voice channels on Discord.
 
 ![Spotify Player](https://raw.githubusercontent.com/jbelford/ShuffleBot/master/src/public/img/SpotifyPlayer.PNG)
 
-### [Invite ShuffleBot to your server](https://discordapp.com/oauth2/authorize?client_id=270697360714235904&permissions=70745152&scope=bot)
-## OR
-### [Try out the bot here](https://discord.gg/MbbEAeH)
+# ⚠ ShuffleBot has been replaced with [Eolian](https://github.com/jbelford/Eolian)
+Eolian is an improved ShuffleBot and supports many more features
 
 ## General Features
-* **NEW** Import Spotify playlists!
+* Import Spotify playlists!
 * Instantly queue up songs / playlists from SoundCloud or Youtube!
 * Make your own playlists and be able to use them wherever ShuffleBot is!
 * Sync your SoundCloud favorites and queue them up in any order you like!
